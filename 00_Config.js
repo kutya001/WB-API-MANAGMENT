@@ -194,7 +194,7 @@ const SHEET_SCHEMAS = {
   // АРТИКУЛЫ — карточки товаров из Content API
   // ----------------------------------------------------------
   [APP.sheets.ARTICLES]: {
-    keys:   ['cabinet', 'nmID', 'vendorCode', 'brand', 'title', 'category', 'subjectName', 'updatedAt'],
+    keys:   ['cabinet', 'nmID', 'vendorCode', 'brand', 'title', 'category', 'subjectName', 'photoUrl', 'updatedAt'],
     titles: {
       cabinet:     'Кабинет',
       nmID:        'Артикул WB (nmID)',
@@ -203,6 +203,7 @@ const SHEET_SCHEMAS = {
       title:       'Название',
       category:    'Категория',
       subjectName: 'Предмет',
+      photoUrl:    'Фото (ссылка)',
       updatedAt:   'Обновлён'
     },
     desc: {
@@ -213,6 +214,7 @@ const SHEET_SCHEMAS = {
       title:       'Название карточки',
       category:    'Родительская категория',
       subjectName: 'Предмет (подкатегория)',
+      photoUrl:    'Ссылка на главное фото товара (big)',
       updatedAt:   'Дата последнего обновления карточки'
     }
   },

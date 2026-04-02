@@ -48,6 +48,10 @@ function loadArticles() {
 
       // Маппинг карточки → строка
       cards.forEach(card => {
+        // Первое фото из массива photos (размер big)
+        const photos  = card.photos || card.mediaFiles || [];
+        const mainPic = photos.length ? (photos[0].big || photos[0].tm || '') : '';
+
         rows.push({
           cabinet:     item.cabinet,
           nmID:        card.nmID        || '',
@@ -56,6 +60,7 @@ function loadArticles() {
           title:       card.title       || '',
           category:    card.subjectParentName || '',
           subjectName: card.subjectName || '',
+          photoUrl:    mainPic,
           updatedAt:   formatDateRu(card.updatedAt)
         });
       });
