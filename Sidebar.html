@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WB Учёт</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    background: #f4f6fb;
+    color: #1a1a2e;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #2d5be3, #1a3ab8);
+    color: #fff;
+    padding: 14px 16px 10px;
+  }
+  .header h1 { font-size: 15px; font-weight: 700; letter-spacing: 0.3px; }
+  .header .sub { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #e8eaf6;
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 4px;
+    font-size: 11px;
+    text-align: center;
+    cursor: pointer;
+    color: #666;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .tab.active { color: #2d5be3; border-bottom-color: #2d5be3; font-weight: 600; }
+  .tab:hover:not(.active) { background: #f0f4ff; color: #2d5be3; }
+
+  /* Content */
+  .content { display: none; padding: 12px 14px; }
+  .content.active { display: block; }
+
+  /* Section title */
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #2d5be3;
+    margin: 14px 0 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e8eaf6;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  /* Buttons */
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary   { background: #2d5be3; color: #fff; }
+  .btn-primary:hover { background: #1a3ab8; }
+  .btn-secondary { background: #f0f4ff; color: #2d5be3; border: 1px solid #c5d2f8; }
+  .btn-secondary:hover { background: #e0e8ff; }
+  .btn-danger    { background: #fff0f0; color: #d32f2f; border: 1px solid #ffcdd2; }
+  .btn-danger:hover { background: #ffe0e0; }
+  .btn-success   { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+  .btn-success:hover { background: #d4edda; }
+  .btn:disabled  { opacity: 0.5; cursor: not-allowed; }
+  .btn .icon { font-size: 15px; flex-shrink: 0; }
+
+  /* Status badge */
+  .badge {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .badge-ok    { background: #e8f5e9; color: #2e7d32; }
+  .badge-empty { background: #fff3e0; color: #e65100; }
+  .badge-num   { background: #e3f2fd; color: #1565c0; }
+
+  /* Status bar */
+  .status-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 8px 14px;
+    font-size: 11px;
+    border-top: 1px solid #e8eaf6;
+    background: #fff;
+    transition: all 0.2s;
+  }
+  .status-bar.ok      { color: #2e7d32; background: #f1f8e9; }
+  .status-bar.error   { color: #c62828; background: #ffebee; }
+  .status-bar.loading { color: #1565c0; background: #e3f2fd; }
+  .status-bar.idle    { color: #666; }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 11px; height: 11px;
+    border: 2px solid #c5d2f8;
+    border-top-color: #2d5be3;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 5px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Sheets table */
+  .sheets-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
+  .sheets-table th {
+    background: #2d5be3; color: #fff;
+    padding: 5px 8px; text-align: left; font-weight: 600;
+  }
+  .sheets-table td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
+  .sheets-table tr:hover td { background: #f5f7ff; }
+  .sheets-table .rows-num { text-align: right; color: #666; }
+
+  /* Settings form */
+  .form-group { margin-bottom: 10px; }
+  .form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 3px;
+  }
+  .form-group .desc {
+    font-size: 10px;
+    color: #888;
+    margin-bottom: 3px;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #dde2f0;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #1a1a2e;
+    background: #fff;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: #2d5be3;
+    box-shadow: 0 0 0 2px #dde8ff;
+  }
+
+  /* Docs */
+  .doc-item {
+    background: #fff;
+    border: 1px solid #e8eaf6;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .doc-item h3 { font-size: 12px; font-weight: 700; color: #2d5be3; margin-bottom: 5px; }
+  .doc-item p  { font-size: 11px; color: #555; line-height: 1.5; }
+  .doc-item .field-list { margin-top: 6px; }
+  .doc-item .field-list li {
+    font-size: 10.5px; color: #333;
+    list-style: none;
+    padding: 2px 0;
+    border-bottom: 1px solid #f5f5f5;
+    display: flex; gap: 6px;
+  }
+  .doc-item .field-list li .key   { color: #555; font-family: monospace; min-width: 100px; }
+  .doc-item .field-list li .title { color: #1a1a2e; font-weight: 500; }
+
+  .pb-60 { padding-bottom: 60px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🛍️ WB Учёт</h1>
+  <div class="sub" id="header-sub">Загрузка данных...</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('actions')">⚡ Действия</div>
+  <div class="tab" onclick="switchTab('sheets')">📋 Листы</div>
+  <div class="tab" onclick="switchTab('settings')">⚙️ Настройки</div>
+  <div class="tab" onclick="switchTab('docs')">📖 Справка</div>
+</div>
+
+<!-- TAB: ДЕЙСТВИЯ -->
+<div id="tab-actions" class="content active pb-60">
+
+  <div class="section-title">🚀 Полное обновление</div>
+  <button class="btn btn-primary" onclick="run('loadAll')">
+    <span class="icon">🚀</span> Обновить всё
+  </button>
+
+  <div class="section-title">📦 Товары</div>
+  <button class="btn btn-secondary" onclick="run('loadArticles')">
+    <span class="icon">🔄</span> Артикулы (каталог)
+  </button>
+  <button class="btn btn-secondary" onclick="run('loadStocksWb')">
+    <span class="icon">📊</span> Остатки на складах WB
+  </button>
+
+  <div class="section-title">🛒 Заказы и Продажи</div>
+  <button class="btn btn-secondary" onclick="run('loadOrders')">
+    <span class="icon">📊</span> Заказы
+  </button>
+  <button class="btn btn-secondary" onclick="run('loadSales')">
+    <span class="icon">💰</span> Продажи
+  </button>
+
+  <div class="section-title">💳 Финансы</div>
+  <button class="btn btn-secondary" onclick="run('loadFinance')">
+    <span class="icon">🧾</span> Финансовый отчёт
+  </button>
+  <button class="btn btn-secondary" onclick="run('loadBalance')">
+    <span class="icon">💳</span> Баланс продавца
+  </button>
+
+  <div class="section-title">🚚 Поставки FBW</div>
+  <button class="btn btn-secondary" onclick="run('loadSupplies')">
+    <span class="icon">📦</span> Список поставок
+  </button>
+  <button class="btn btn-secondary" onclick="run('loadSupplyDetails')">
+    <span class="icon">📋</span> Детали поставок
+  </button>
+  <button class="btn btn-secondary" onclick="run('loadSupplyGoods')">
+    <span class="icon">🧴</span> Товары поставок
+  </button>
+  <button class="btn btn-secondary" onclick="run('loadSupplyPackages')">
+    <span class="icon">📦</span> Упаковка поставок
+  </button>
+
+  <div class="section-title">📈 Отчёты</div>
+  <button class="btn btn-success" onclick="run('buildExpensesFromFinance')">
+    <span class="icon">📉</span> Собрать расходы
+  </button>
+  <button class="btn btn-success" onclick="run('buildDDR')">
+    <span class="icon">📘</span> Построить ДДР
+  </button>
+
+  <div class="section-title">🛠️ Настройка</div>
+  <button class="btn btn-secondary" onclick="run('initSettingsSheet')">
+    <span class="icon">⚙️</span> Создать лист НАСТРОЙКИ
+  </button>
+  <button class="btn btn-secondary" onclick="run('initMetadataSheet')">
+    <span class="icon">📘</span> Обновить МЕТАДАННЫЕ
+  </button>
+  <button class="btn btn-danger" onclick="run('clearLogs')">
+    <span class="icon">🗑️</span> Очистить логи
+  </button>
+</div>
+
+<!-- TAB: ЛИСТЫ -->
+<div id="tab-sheets" class="content pb-60">
+  <div class="section-title">Состояние листов</div>
+  <table class="sheets-table">
+    <thead>
+      <tr><th>Лист</th><th style="text-align:right">Строк</th></tr>
+    </thead>
+    <tbody id="sheets-tbody">
+      <tr><td colspan="2" style="color:#888;padding:12px 8px">Загрузка...</td></tr>
+    </tbody>
+  </table>
+  <br>
+  <button class="btn btn-secondary" onclick="loadSheetsData()">
+    <span class="icon">🔄</span> Обновить статус
+  </button>
+</div>
+
+<!-- TAB: НАСТРОЙКИ -->
+<div id="tab-settings" class="content pb-60">
+  <div class="section-title">Период данных</div>
+
+  <div id="settings-form">
+    <div style="color:#888;font-size:11px;padding:10px 0">Загрузка настроек...</div>
+  </div>
+
+  <br>
+  <button class="btn btn-primary" onclick="saveSettings()">
+    <span class="icon">💾</span> Сохранить настройки
+  </button>
+</div>
+
+<!-- TAB: СПРАВКА -->
+<div id="tab-docs" class="content pb-60">
+  <div class="section-title">Листы и их назначение</div>
+
+  <div class="doc-item">
+    <h3>📋 АРТИКУЛЫ</h3>
+    <p>Каталог всех карточек товаров из Content API. Обновляй перед остальными загрузками.</p>
+    <ul class="field-list">
+      <li><span class="key">nmID</span><span class="title">Уникальный ID карточки WB</span></li>
+      <li><span class="key">vendorCode</span><span class="title">Артикул, заданный продавцом</span></li>
+      <li><span class="key">subjectName</span><span class="title">Предмет (подкатегория WB)</span></li>
+    </ul>
+  </div>
+
+  <div class="doc-item">
+    <h3>📊 ОСТАТКИ_WB</h3>
+    <p>Остатки товаров на складах WB (FBW). Обновляется раз в день, данные на начало суток.</p>
+    <ul class="field-list">
+      <li><span class="key">quantity</span><span class="title">Текущий остаток (шт.)</span></li>
+      <li><span class="key">inWayToClient</span><span class="title">В доставке к покупателю</span></li>
+      <li><span class="key">quantityFull</span><span class="title">Полный остаток (склад + в пути)</span></li>
+    </ul>
+  </div>
+
+  <div class="doc-item">
+    <h3>🛒 ЗАКАЗЫ</h3>
+    <p>Все заказы с момента указанной даты. Включает отменённые (isCancel=true).</p>
+    <ul class="field-list">
+      <li><span class="key">priceWithDisc</span><span class="title">Цена, которую заплатил покупатель</span></li>
+      <li><span class="key">isCancel</span><span class="title">true = заказ отменён</span></li>
+      <li><span class="key">srid</span><span class="title">Уникальный ID строки заказа</span></li>
+    </ul>
+  </div>
+
+  <div class="doc-item">
+    <h3>💰 ПРОДАЖИ</h3>
+    <p>Подтверждённые продажи. saleID начинается с "S" — продажа, "R" — возврат.</p>
+    <ul class="field-list">
+      <li><span class="key">forPay</span><span class="title">Сумма к перечислению продавцу</span></li>
+      <li><span class="key">paymentSaleAmount</span><span class="title">Оплата покупателя (с СПП)</span></li>
+      <li><span class="key">saleID</span><span class="title">ID продажи (S.../R...)</span></li>
+    </ul>
+  </div>
+
+  <div class="doc-item">
+    <h3>🧾 ФИНАНСЫ</h3>
+    <p>Детализация отчёта реализации. Данные с 29.01.2024. Пагинация по rrd_id.</p>
+    <ul class="field-list">
+      <li><span class="key">rrd_id</span><span class="title">Уникальный ID строки (для пагинации)</span></li>
+      <li><span class="key">doc_type_name</span><span class="title">Продажа / Возврат / Штраф / Логистика</span></li>
+      <li><span class="key">ppvz_for_pay</span><span class="title">К выплате по строке</span></li>
+      <li><span class="key">penalty</span><span class="title">Штраф (отрицательное = удержание WB)</span></li>
+    </ul>
+  </div>
+
+  <div class="doc-item">
+    <h3>💳 БАЛАНС</h3>
+    <p>Текущий баланс кабинета. Требует отдельный токен категории "Финансы".</p>
+    <ul class="field-list">
+      <li><span class="key">current</span><span class="title">Общий баланс на счёте</span></li>
+      <li><span class="key">for_withdraw</span><span class="title">Доступно к выводу прямо сейчас</span></li>
+    </ul>
+  </div>
+
+  <div class="doc-item">
+    <h3>📦 ПОСТАВКИ</h3>
+    <p>Список поставок FBW за период. Статусы: 1=Черновик, 2=Подтверждена, 3=Принята, 4=Завершена, 5=Отменена.</p>
+  </div>
+
+  <div class="doc-item">
+    <h3>📉 РАСХОДЫ</h3>
+    <p>Агрегация из ФИНАНСЫ. wb_expense_estimate = Валовая сумма − К выплате.</p>
+  </div>
+
+  <div class="doc-item">
+    <h3>📘 ДДР</h3>
+    <p>Доходы-Расходы по месяцам. Строится из ЗАКАЗЫ + ПРОДАЖИ + ФИНАНСЫ + РАСХОДЫ.</p>
+    <ul class="field-list">
+      <li><span class="key">ddr_net_cashflow_estimate</span><span class="title">К выплате WB − Штрафы (оценка)</span></li>
+      <li><span class="key">drr_percent</span><span class="title">Доля расходов / оборот × 100</span></li>
+    </ul>
+  </div>
+
+  <div class="doc-item">
+    <h3>📝 ЛОГИ</h3>
+    <p>Журнал запусков: время, длительность, статус (OK/ERROR/PARTIAL), кол-во загруженных строк.</p>
+  </div>
+
+  <div class="section-title">Токены WB API</div>
+  <div class="doc-item">
+    <h3>Категории токенов</h3>
+    <p>Разные методы требуют разные категории токена:</p>
+    <ul class="field-list">
+      <li><span class="key">Контент</span><span class="title">Артикулы (/content/v2/...)</span></li>
+      <li><span class="key">Статистика</span><span class="title">Заказы, продажи, финансы</span></li>
+      <li><span class="key">Поставки FBW</span><span class="title">Поставки (/api/v1/supplies/...)</span></li>
+      <li><span class="key">Финансы</span><span class="title">Баланс (/api/v1/account/balance)</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- Status bar -->
+<div class="status-bar idle" id="status-bar">
+  ℹ️ Готов к работе
+</div>
+
+<script>
+  // Глобальное состояние
+  let isRunning = false;
+  let currentSettings = {};
+
+  // ── Переключение вкладок ──────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+
+    if (name === 'sheets')   loadSheetsData();
+    if (name === 'settings') loadSettings();
+    if (name === 'docs')     {} // статичный контент
+  }
+
+  // ── Статус-бар ────────────────────────────────────────────
+  function setStatus(msg, type) {
+    const bar = document.getElementById('status-bar');
+    bar.className = 'status-bar ' + (type || 'idle');
+    bar.innerHTML = msg;
+  }
+
+  // ── Запуск функции ────────────────────────────────────────
+  function run(funcName) {
+    if (isRunning) {
+      setStatus('⏳ Подождите, уже выполняется задача...', 'loading');
+      return;
+    }
+
+    isRunning = true;
+    setAllBtnsDisabled(true);
+    setStatus('<span class="spinner"></span> Выполняется: ' + funcName + '...', 'loading');
+
+    google.script.run
+      .withSuccessHandler(result => {
+        isRunning = false;
+        setAllBtnsDisabled(false);
+        if (result && result.ok === false) {
+          setStatus('❌ Ошибка: ' + result.message, 'error');
+        } else {
+          setStatus('✅ ' + (result && result.message ? result.message : funcName + ' выполнено'), 'ok');
+          // Обновить счётчики листов если открыта вкладка Листы
+          if (document.getElementById('tab-sheets').classList.contains('active')) {
+            loadSheetsData();
+          }
+        }
+      })
+      .withFailureHandler(err => {
+        isRunning = false;
+        setAllBtnsDisabled(false);
+        setStatus('❌ Ошибка: ' + err.message, 'error');
+      })
+      .runFromSidebar(funcName);
+  }
+
+  function setAllBtnsDisabled(disabled) {
+    document.querySelectorAll('.btn').forEach(b => {
+      b.disabled = disabled;
+    });
+  }
+
+  // ── Загрузить статус листов ───────────────────────────────
+  function loadSheetsData() {
+    const tbody = document.getElementById('sheets-tbody');
+    tbody.innerHTML = '<tr><td colspan="2" style="color:#888;padding:10px 8px">Загрузка...</td></tr>';
+
+    google.script.run
+      .withSuccessHandler(data => {
+        if (!data || !data.sheets) return;
+
+        // Обновить заголовок
+        const cabs = Object.keys(data.settings).length;
+        document.getElementById('header-sub').textContent =
+          'v2.0 | Настроек: ' + cabs;
+
+        const sheets = data.sheets;
+        let html = '';
+        Object.entries(sheets).forEach(([name, info]) => {
+          const badge = info.exists
+            ? `<span class="badge badge-num">${info.rows} стр.</span>`
+            : `<span class="badge badge-empty">нет</span>`;
+          html += `<tr>
+            <td>${name}</td>
+            <td class="rows-num">${badge}</td>
+          </tr>`;
+        });
+        tbody.innerHTML = html;
+      })
+      .withFailureHandler(err => {
+        tbody.innerHTML = '<tr><td colspan="2" style="color:red">Ошибка: ' + err.message + '</td></tr>';
+      })
+      .getSidebarData();
+  }
+
+  // ── Настройки ────────────────────────────────────────────
+  function loadSettings() {
+    const form = document.getElementById('settings-form');
+    form.innerHTML = '<div style="color:#888;font-size:11px;padding:10px 0">Загрузка...</div>';
+
+    google.script.run
+      .withSuccessHandler(data => {
+        if (!data || !data.settings) return;
+        currentSettings = data.settings;
+        renderSettingsForm(data.settings);
+      })
+      .withFailureHandler(err => {
+        form.innerHTML = '<div style="color:red;font-size:11px">Ошибка: ' + err.message + '</div>';
+      })
+      .getSidebarData();
+  }
+
+  // Группы настроек с описанием
+  const SETTINGS_META = {
+    ORDERS_DATE_FROM:   { label: 'Заказы: дата с',   desc: 'YYYY-MM-DD', group: 'Заказы' },
+    SALES_DATE_FROM:    { label: 'Продажи: дата с',  desc: 'YYYY-MM-DD', group: 'Продажи' },
+    FINANCE_DATE_FROM:  { label: 'Финансы: с',       desc: 'YYYY-MM-DD', group: 'Финансы' },
+    FINANCE_DATE_TO:    { label: 'Финансы: по',      desc: 'YYYY-MM-DD', group: 'Финансы' },
+    FINANCE_PERIOD:     { label: 'Финансы: тип',     desc: 'weekly / daily', group: 'Финансы', type: 'select', options: ['weekly', 'daily'] },
+    SUPPLIES_DATE_FROM: { label: 'Поставки: с',      desc: 'YYYY-MM-DD', group: 'Поставки' },
+    SUPPLIES_DATE_TO:   { label: 'Поставки: по',     desc: 'YYYY-MM-DD', group: 'Поставки' },
+    SUPPLIES_DATE_TYPE: { label: 'Поставки: тип даты', desc: 'factDate / createDate / supplyDate', group: 'Поставки', type: 'select', options: ['factDate','createDate','supplyDate'] },
+    SUPPLIES_STATUS_IDS:{ label: 'Поставки: статусы', desc: 'Через запятую: 1,2,3 (пусто = все)', group: 'Поставки' },
+    SUPPLIES_LIMIT:     { label: 'Поставки: лимит',  desc: 'Строк за запрос (макс. 1000)', group: 'Поставки' },
+    MAX_PAGES_PER_RUN:  { label: 'Макс. страниц',    desc: 'Для пагинации за один запуск', group: 'Общие' }
+  };
+
+  function renderSettingsForm(settings) {
+    const form = document.getElementById('settings-form');
+    let html = '';
+    let lastGroup = '';
+
+    const keys = Object.keys(SETTINGS_META);
+    // Группируем
+    const groups = {};
+    keys.forEach(k => {
+      const m = SETTINGS_META[k];
+      if (!groups[m.group]) groups[m.group] = [];
+      groups[m.group].push(k);
+    });
+
+    Object.entries(groups).forEach(([group, gkeys]) => {
+      html += `<div class="section-title">${group}</div>`;
+      gkeys.forEach(k => {
+        const m   = SETTINGS_META[k];
+        const val = settings[k] !== undefined ? settings[k] : '';
+
+        if (m.type === 'select') {
+          const opts = m.options.map(o =>
+            `<option value="${o}" ${o === val ? 'selected' : ''}>${o}</option>`
+          ).join('');
+          html += `
+            <div class="form-group">
+              <label>${m.label}</label>
+              <div class="desc">${m.desc}</div>
+              <select id="setting-${k}">${opts}</select>
+            </div>`;
+        } else {
+          html += `
+            <div class="form-group">
+              <label>${m.label}</label>
+              <div class="desc">${m.desc}</div>
+              <input type="text" id="setting-${k}" value="${val}">
+            </div>`;
+        }
+      });
+    });
+
+    form.innerHTML = html;
+  }
+
+  function saveSettings() {
+    const newSettings = {};
+    Object.keys(SETTINGS_META).forEach(k => {
+      const el = document.getElementById('setting-' + k);
+      if (el) newSettings[k] = el.value;
+    });
+
+    setStatus('<span class="spinner"></span> Сохранение...', 'loading');
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.ok) {
+          setStatus('✅ Настройки сохранены', 'ok');
+        } else {
+          setStatus('❌ ' + (res && res.message ? res.message : 'Ошибка'), 'error');
+        }
+      })
+      .withFailureHandler(err => {
+        setStatus('❌ ' + err.message, 'error');
+      })
+      .saveSettingsFromSidebar(newSettings);
+  }
+
+  // ── Инициализация ─────────────────────────────────────────
+  loadSheetsData();
+</script>
+</body>
+</html>
