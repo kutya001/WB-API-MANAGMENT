@@ -1,0 +1,16 @@
+# Игнорируем всё, кроме нужного (полезно для TypeScript/Webpack-проектов)
+**/**
+!appsscript.json
+!build/main.js
+!**/*.gs
+!**/*.js
+!**/*.ts
+!**/*.html
+
+# Дополнительно игнорируем ненужное
+node_modules/**
+.git/**
+dist/**
+*.log
+.DS_Store
+.github/**
