@@ -27,6 +27,7 @@
  *   logistics_amount    = delivery_amount || return_amount
  */
 function buildExpensesFromFinance() {
+  const startedAt   = new Date();
   const financeRows = readSheetAsObjects(APP.sheets.FINANCE);
 
   if (!financeRows.length) {
@@ -75,6 +76,14 @@ function buildExpensesFromFinance() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.EXPENSES, out);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'buildExpensesFromFinance',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Расходы: ${count} строк`, '📉 Расходы', 3);
 }
 
@@ -92,6 +101,7 @@ function buildExpensesFromFinance() {
  * ДРР % = (logistics_amount + penalties_amount) / gross_finance_amount × 100
  */
 function buildDDR() {
+  const startedAt = new Date();
   const orders   = readSheetAsObjects(APP.sheets.ORDERS);
   const sales    = readSheetAsObjects(APP.sheets.SALES);
   const finance  = readSheetAsObjects(APP.sheets.FINANCE);
@@ -215,5 +225,13 @@ function buildDDR() {
     });
 
   const count = writeObjectsToSheet(APP.sheets.DDR, out);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'buildDDR',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`ДДР построен: ${count} строк`, '📘 ДДР', 3);
 }

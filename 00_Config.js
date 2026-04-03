@@ -610,13 +610,16 @@ const SHEET_SCHEMAS = {
   // ЛОГИ — системный журнал запусков
   // ----------------------------------------------------------
   [APP.sheets.LOGS]: {
-    keys: ['startedAt','finishedAt','durationSec','functionName','status','cabinet','rowsLoaded','errorMessage'],
+    keys: ['startedAt','finishedAt','durationSec','functionName','funcDisplayName','targetSheet','status','cabinet','rowsLoaded','errorMessage'],
     titles: {
       startedAt:'Начало', finishedAt:'Конец', durationSec:'Длительность (сек)',
-      functionName:'Функция', status:'Статус', cabinet:'Кабинет',
+      functionName:'Функция', funcDisplayName:'Функция Название', targetSheet:'Таблица',
+      status:'Статус', cabinet:'Кабинет',
       rowsLoaded:'Строк загружено', errorMessage:'Ошибка'
     },
     desc: {
+      funcDisplayName:'Человекочитаемое название действия',
+      targetSheet:'Лист, в который записываются данные',
       status:'OK / ERROR / PARTIAL',
       rowsLoaded:'Кол-во записей, записанных в лист'
     }

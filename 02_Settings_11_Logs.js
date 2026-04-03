@@ -188,11 +188,57 @@ function writeLog(params) {
     const finish = params.finishedAt || new Date();
     const durSec = Math.round((finish.getTime() - start.getTime()) / 1000);
 
+    // Словарь читаемых названий функций
+    const FUNC_NAMES = {
+      loadArticles:           'Арт. каталог',
+      loadArticleBarcodes:    'Арт. баркоды',
+      loadStocksWb:           'Остатки WB',
+      loadStocksByBarcode:    'Остатки по баркод.',
+      loadOrders:             'Заказы',
+      loadSales:              'Продажи',
+      loadFinance:            'Финансы',
+      loadBalance:            'Баланс',
+      loadSupplies:           'Поставки',
+      loadSupplyDetails:      'Детали поставок',
+      loadSupplyGoods:        'Товары поставок',
+      loadSupplyPackages:     'Упаковка поставок',
+      buildExpensesFromFinance:'Расходы',
+      buildDDR:               'ДДР',
+      loadAll:                'Полное обновление',
+      loadAllGoods:           'Все товары',
+      loadAllOrdersSales:     'Заказы+Продажи',
+      loadAllFinance:         'Все финансы',
+      loadAllSupplies:        'Все поставки',
+      loadAllReports:         'Все отчёты'
+    };
+
+    // Словарь целевых листов
+    const FUNC_SHEETS = {
+      loadArticles:           APP.sheets.ARTICLES,
+      loadArticleBarcodes:    APP.sheets.ARTICLE_BARCODES,
+      loadStocksWb:           APP.sheets.STOCKS_WB,
+      loadStocksByBarcode:    APP.sheets.STOCKS_BY_BARCODE,
+      loadOrders:             APP.sheets.ORDERS,
+      loadSales:              APP.sheets.SALES,
+      loadFinance:            APP.sheets.FINANCE,
+      loadBalance:            APP.sheets.BALANCE,
+      loadSupplies:           APP.sheets.SUPPLIES,
+      loadSupplyDetails:      APP.sheets.SUPPLY_DETAILS,
+      loadSupplyGoods:        APP.sheets.SUPPLY_GOODS,
+      loadSupplyPackages:     APP.sheets.SUPPLY_PACKAGES,
+      buildExpensesFromFinance:APP.sheets.EXPENSES,
+      buildDDR:               APP.sheets.DDR
+    };
+
+    const funcName = params.functionName || '';
+
     const row = [
       formatDateRu(start),
       formatDateRu(finish),
       durSec,
-      params.functionName || '',
+      funcName,
+      params.funcDisplayName || FUNC_NAMES[funcName] || '',
+      params.targetSheet     || FUNC_SHEETS[funcName] || '',
       params.status || 'OK',
       params.cabinet || 'ВСЕ',
       params.rowsLoaded || 0,

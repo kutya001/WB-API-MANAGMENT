@@ -16,6 +16,7 @@
  * Выход из цикла: cards.length === 0 OR cursor.total < cursor.limit
  */
 function loadArticles() {
+  const startedAt = new Date();
   const apiKeys = getApiKeys();
   const rows    = [];
 
@@ -88,7 +89,7 @@ function loadArticles() {
 
   const count = writeObjectsToSheet(APP.sheets.ARTICLES, rows);
   writeLog({
-    startedAt:    new Date(),
+    startedAt,
     finishedAt:   new Date(),
     functionName: 'loadArticles',
     status:       'OK',
@@ -105,6 +106,7 @@ function loadArticles() {
  * Записывает в лист АРТИКУЛ_БАРКОДЫ.
  */
 function loadArticleBarcodes() {
+  const startedAt = new Date();
   const apiKeys = getApiKeys();
   const rows    = [];
 
@@ -171,6 +173,14 @@ function loadArticleBarcodes() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.ARTICLE_BARCODES, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadArticleBarcodes',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Загружено ${count} баркодов`, '✅ Баркоды', 3);
   return count;
 }
@@ -192,6 +202,7 @@ function loadArticleBarcodes() {
  * Записывает в лист ОСТАТКИ_WB.
  */
 function loadStocksWb() {
+  const startedAt = new Date();
   const apiKeys  = getApiKeys();
   const loadedAt = formatDateRu(new Date());
   const rows     = [];
@@ -238,6 +249,14 @@ function loadStocksWb() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.STOCKS_WB, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadStocksWb',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Остатки WB: ${count} строк`, '📦 Остатки WB', 3);
   return count;
 }
@@ -248,6 +267,7 @@ function loadStocksWb() {
  * Записывает в лист ОСТАТКИ_БАРКОДЫ.
  */
 function loadStocksByBarcode() {
+  const startedAt = new Date();
   const apiKeys  = getApiKeys();
   const loadedAt = formatDateRu(new Date());
   const rows     = [];
@@ -301,6 +321,14 @@ function loadStocksByBarcode() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.STOCKS_BY_BARCODE, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadStocksByBarcode',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Остатки по баркодам: ${count} строк`, '📊 Остатки по баркодам', 3);
   return count;
 }
@@ -373,6 +401,7 @@ function loadSales() {
  * @returns {number} - Кол-во загруженных строк
  */
 function _loadStatisticsByLastChangeDate(endpoint, sheetName, dateFromSettingKey, logFuncName) {
+  const startedAt   = new Date();
   const apiKeys     = getApiKeys();
   const settingDate = parseDateToIso(getSetting(dateFromSettingKey, '2026-01-01'), '2026-01-01');
   const maxPages    = Math.min(Number(getSetting(APP.settings.MAX_PAGES_PER_RUN, '5')) || 5, 20);
@@ -446,7 +475,7 @@ function _loadStatisticsByLastChangeDate(endpoint, sheetName, dateFromSettingKey
   }
 
   writeLog({
-    startedAt:    new Date(),
+    startedAt,
     finishedAt:   new Date(),
     functionName: logFuncName,
     status:       'OK',

@@ -21,6 +21,7 @@
  * Записывает в лист ФИНАНСЫ.
  */
 function loadFinance() {
+  const startedAt = new Date();
   const dateFrom = parseDateToIso(getSetting(APP.settings.FINANCE_DATE_FROM, '2026-04-01'), '2026-04-01');
   const dateTo   = parseDateToIso(getSetting(APP.settings.FINANCE_DATE_TO,   '2026-04-30'), '2026-04-30');
   const period   = getSetting(APP.settings.FINANCE_PERIOD, 'weekly');  // 'weekly' | 'daily'
@@ -80,7 +81,7 @@ function loadFinance() {
   const count = writeObjectsToSheet(APP.sheets.FINANCE, rows);
 
   writeLog({
-    startedAt:    new Date(),
+    startedAt,
     finishedAt:   new Date(),
     functionName: 'loadFinance',
     status:       'OK',
@@ -111,6 +112,7 @@ function loadFinance() {
  * Записывает в лист БАЛАНС.
  */
 function loadBalance() {
+  const startedAt = new Date();
   const apiKeys  = getApiKeys();
   const loadedAt = formatDateRu(new Date());
   const rows     = [];
@@ -143,6 +145,14 @@ function loadBalance() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.BALANCE, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadBalance',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Баланс загружен: ${count} кабинета(ов)`, '💳 Баланс', 3);
   return count;
 }
@@ -169,6 +179,7 @@ function loadBalance() {
  * Записывает в лист ПОСТАВКИ.
  */
 function loadSupplies() {
+  const startedAt  = new Date();
   const dateFrom   = parseDateToIso(getSetting('SUPPLIES_DATE_FROM', '2026-01-01'), '2026-01-01');
   const dateTo     = parseDateToIso(getSetting('SUPPLIES_DATE_TO',   '2026-04-30'), '2026-04-30');
   const dateType   = getSetting('SUPPLIES_DATE_TYPE', 'factDate');
@@ -232,6 +243,14 @@ function loadSupplies() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.SUPPLIES, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadSupplies',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Загружено ${count} поставок`, '📦 Поставки', 3);
   return count;
 }
@@ -273,6 +292,7 @@ function _getSupplyTasks() {
  * Лимит: 30 запросов/мин, интервал 2 сек
  */
 function loadSupplyDetails() {
+  const startedAt = new Date();
   const tasks = _getSupplyTasks();
   const rows  = [];
 
@@ -321,6 +341,14 @@ function loadSupplyDetails() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.SUPPLY_DETAILS, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadSupplyDetails',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Детали поставок: ${count} строк`, '📦 Детали', 3);
   return count;
 }
@@ -334,6 +362,7 @@ function loadSupplyDetails() {
  * Пагинация: offset-based (limit + offset)
  */
 function loadSupplyGoods() {
+  const startedAt = new Date();
   const tasks = _getSupplyTasks();
   const rows  = [];
 
@@ -391,6 +420,14 @@ function loadSupplyGoods() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.SUPPLY_GOODS, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadSupplyGoods',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Товары поставок: ${count} строк`, '📦 Товары', 3);
   return count;
 }
@@ -401,6 +438,7 @@ function loadSupplyGoods() {
  * Записывает в лист ПОСТАВКИ_УПАКОВКА.
  */
 function loadSupplyPackages() {
+  const startedAt = new Date();
   const tasks = _getSupplyTasks();
   const rows  = [];
 
@@ -465,6 +503,14 @@ function loadSupplyPackages() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.SUPPLY_PACKAGES, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadSupplyPackages',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
   SpreadsheetApp.getActive().toast(`Упаковка: ${count} строк`, '📦 Упаковка', 3);
   return count;
 }
