@@ -158,6 +158,202 @@ function loadBalance() {
 }
 
 // ============================================================
+// БЮДЖЕТЫ РЕКЛАМНЫХ КАМПАНИЙ
+// ============================================================
+/**
+ * API: Promotion GET /adv/v1/promotion/adverts — список кампаний
+ *      Promotion GET /adv/v1/budget?id={id} — бюджет кампании
+ * Лимит: 10 запросов/мин → sleepMs 6100
+ * Токен: категория "Продвижение"
+ *
+ * Документация: https://dev.wildberries.ru/openapi/promotion
+ */
+
+/**
+ * Загружает бюджеты рекламных кампаний.
+ * Шаг 1: Получает список кампаний.
+ * Шаг 2: Для каждой — запрашивает бюджет.
+ * Записывает в лист БЮДЖЕТ_КАМПАНИЙ.
+ */
+function loadCampaignBudgets() {
+  const startedAt = new Date();
+  const apiKeys  = getApiKeys();
+  const loadedAt = formatDateRu(new Date());
+  const rows     = [];
+
+  apiKeys.forEach(item => {
+    // Шаг 1: получить список кампаний
+    let campaigns;
+    try {
+      campaigns = wbRequest('promotion', '/adv/v1/promotion/adverts', 'GET', null, item.apiKey);
+    } catch (e) {
+      Logger.log(`[loadCampaignBudgets] Кампании "${item.cabinet}": ${e.message}`);
+      return;
+    }
+
+    if (!campaigns || !Array.isArray(campaigns) || !campaigns.length) return;
+
+    // Шаг 2: бюджет каждой кампании
+    campaigns.forEach(camp => {
+      const advertId = camp.advertId || camp.id || 0;
+      if (!advertId) return;
+
+      let budget;
+      try {
+        budget = wbRequest('promotion', '/adv/v1/budget', 'GET', null, item.apiKey, { id: advertId });
+      } catch (e) {
+        Logger.log(`[loadCampaignBudgets] Бюджет ${advertId}: ${e.message}`);
+        return;
+      }
+
+      rows.push({
+        cabinet:       item.cabinet,
+        loadedAt:      loadedAt,
+        advertId:      advertId,
+        advertName:    pickString(camp, ['name', 'advertName', 'title']),
+        type:          camp.type   || '',
+        status:        camp.status || '',
+        dailyBudget:   pickNumber(budget || {}, ['dailyBudget', 'daily_budget']),
+        budget:        pickNumber(budget || {}, ['total', 'budget']),
+        budgetCash:    pickNumber(budget || {}, ['cash']),
+        budgetNetting: pickNumber(budget || {}, ['netting'])
+      });
+
+      Utilities.sleep(WB_API.promotion.rateLimit.sleepMs);
+    });
+
+    markApiUsed(item.row);
+  });
+
+  const count = writeObjectsToSheet(APP.sheets.CAMPAIGN_BUDGET, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadCampaignBudgets',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
+  SpreadsheetApp.getActive().toast(`Бюджеты: ${count} кампаний`, '💰 Бюджеты', 3);
+  return count;
+}
+
+// ============================================================
+// ИСТОРИЯ ЗАТРАТ НА РЕКЛАМУ
+// ============================================================
+/**
+ * API: Promotion POST /adv/v2/fullstats — полная статистика по кампаниям
+ * Лимит: 2 запроса/мин → sleepMs 31000
+ * Токен: категория "Продвижение"
+ * Тело запроса: массив ID кампаний (макс. 100 за запрос)
+ *
+ * Документация: https://dev.wildberries.ru/openapi/promotion
+ */
+
+/**
+ * Загружает историю затрат на рекламу по кампаниям и дням.
+ * Шаг 1: Получает список кампаний.
+ * Шаг 2: Батчами по 100 запрашивает fullstats.
+ * Записывает в лист ИСТОРИЯ_ЗАТРАТ.
+ */
+function loadCostHistory() {
+  const startedAt = new Date();
+  const dateFrom  = parseDateToIso(getSetting(APP.settings.PROMO_DATE_FROM, '2026-04-01'), '2026-04-01');
+  const dateTo    = parseDateToIso(getSetting(APP.settings.PROMO_DATE_TO,   '2026-04-30'), '2026-04-30');
+  const apiKeys   = getApiKeys();
+  const rows      = [];
+
+  apiKeys.forEach(item => {
+    // Шаг 1: список кампаний
+    let campaigns;
+    try {
+      campaigns = wbRequest('promotion', '/adv/v1/promotion/adverts', 'GET', null, item.apiKey);
+    } catch (e) {
+      Logger.log(`[loadCostHistory] Кампании "${item.cabinet}": ${e.message}`);
+      return;
+    }
+
+    if (!campaigns || !Array.isArray(campaigns) || !campaigns.length) return;
+
+    // Индекс кампания → данные
+    const campMap = {};
+    campaigns.forEach(c => {
+      const id = c.advertId || c.id || 0;
+      if (id) campMap[id] = c;
+    });
+
+    // Шаг 2: fullstats батчами
+    const campaignIds = Object.keys(campMap).map(Number);
+    const batchSize   = 100;
+
+    for (let i = 0; i < campaignIds.length; i += batchSize) {
+      const batch = campaignIds.slice(i, i + batchSize);
+
+      let stats;
+      try {
+        stats = wbRequest('promotion', '/adv/v2/fullstats', 'POST', batch, item.apiKey, {
+          dateFrom: dateFrom,
+          dateTo:   dateTo
+        });
+      } catch (e) {
+        Logger.log(`[loadCostHistory] Stats batch ${i}: ${e.message}`);
+        continue;
+      }
+
+      if (!stats || !Array.isArray(stats)) continue;
+
+      stats.forEach(campStat => {
+        const advertId = campStat.advertId || campStat.id || 0;
+        const camp     = campMap[advertId] || {};
+        const days     = campStat.days || campStat.dates || campStat.bopiStats || [];
+
+        if (!Array.isArray(days)) return;
+
+        days.forEach(day => {
+          rows.push({
+            cabinet:    item.cabinet,
+            date:       formatDateOnlyRu(day.date),
+            advertId:   advertId,
+            advertName: pickString(camp, ['name', 'advertName', 'title']),
+            type:       camp.type   || '',
+            status:     camp.status || '',
+            views:      pickNumber(day, ['views']),
+            clicks:     pickNumber(day, ['clicks']),
+            ctr:        round2(pickNumber(day, ['ctr'])),
+            cpc:        round2(pickNumber(day, ['cpc'])),
+            sum:        round2(pickNumber(day, ['sum', 'cost', 'spend'])),
+            atbs:       pickNumber(day, ['atbs', 'add_to_cart']),
+            orders:     pickNumber(day, ['orders']),
+            cr:         round2(pickNumber(day, ['cr'])),
+            shks:       pickNumber(day, ['shks', 'pieces']),
+            sum_price:  round2(pickNumber(day, ['sum_price', 'orders_sum']))
+          });
+        });
+      });
+
+      // 2 запроса/мин → 31 сек интервал
+      if (i + batchSize < campaignIds.length) {
+        Utilities.sleep(31000);
+      }
+    }
+
+    markApiUsed(item.row);
+  });
+
+  const count = writeObjectsToSheet(APP.sheets.COST_HISTORY, rows);
+  writeLog({
+    startedAt,
+    finishedAt:   new Date(),
+    functionName: 'loadCostHistory',
+    status:       'OK',
+    cabinet:      'ВСЕ',
+    rowsLoaded:   count
+  });
+  SpreadsheetApp.getActive().toast(`История затрат: ${count} строк`, '📊 Затраты', 3);
+  return count;
+}
+
+// ============================================================
 // 08_Supplies.gs — Поставки FBW
 // ============================================================
 /**
@@ -519,10 +715,12 @@ function loadSupplyPackages() {
 // ГРУППОВЫЕ ОБНОВЛЕНИЯ
 // ============================================================
 
-/** Обновить все Финансы: отчёт + баланс */
+/** Обновить все Финансы: баланс + бюджеты + затраты + отчёт */
 function loadAllFinance() {
-  loadFinance();
   loadBalance();
+  loadCampaignBudgets();
+  loadCostHistory();
+  loadFinance();
   SpreadsheetApp.getActive().toast('Финансы обновлены', '💳 Финансы', 3);
 }
 

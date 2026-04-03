@@ -78,10 +78,13 @@ function onOpen() {
     // --- Финансы ---
     .addSubMenu(
       ui.createMenu('💳 Финансы')
-        .addItem('💳 Все финансы',        'loadAllFinance')
+        .addItem('💳 Все финансы',          'loadAllFinance')
         .addSeparator()
-        .addItem('🧾 Финансовый отчёт',   'loadFinance')
-        .addItem('💳 Баланс продавца',    'loadBalance')
+        .addItem('💳 Баланс продавца',      'loadBalance')
+        .addItem('💰 Бюджеты кампаний',     'loadCampaignBudgets')
+        .addItem('📊 История затрат',        'loadCostHistory')
+        .addSeparator()
+        .addItem('🧾 Финансовый отчёт',     'loadFinance')
     )
 
     // --- Управленческие отчёты ---
@@ -201,7 +204,7 @@ function runFromSidebar(funcName) {
   const allowed = [
     'loadArticles', 'loadArticleBarcodes', 'loadStocksWb', 'loadStocksByBarcode',
     'loadOrders', 'loadSales',
-    'loadFinance', 'loadBalance',
+    'loadFinance', 'loadBalance', 'loadCampaignBudgets', 'loadCostHistory',
     'loadSupplies', 'loadSupplyDetails', 'loadSupplyGoods', 'loadSupplyPackages',
     'buildExpensesFromFinance', 'buildDDR',
     'initSettingsSheet', 'initMetadataSheet',
@@ -255,6 +258,112 @@ function saveSettingsFromSidebar(newSettings) {
 }
 
 // ============================================================
+// УПРАВЛЕНИЕ API ТОКЕНАМИ (из Sidebar)
+// ============================================================
+
+/**
+ * Возвращает список кабинетов для отображения в UI.
+ * Токены маскируются (первые 8 символов + ...).
+ * @returns {{ name: string, tokenPreview: string, lastUsed: string, row: number }[]}
+ */
+function getApiKeysForSidebar() {
+  const ss = SpreadsheetApp.getActive();
+  const sheet = ss.getSheetByName(APP.sheets.API);
+  if (!sheet) return [];
+
+  const data = sheet.getDataRange().getValues();
+  const result = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const name  = String(data[i][0] || '').trim();
+    const token = String(data[i][1] || '').trim();
+    const used  = data[i][2] || '';
+
+    if (name || token) {
+      result.push({
+        name:         name,
+        tokenPreview: token ? token.substring(0, 8) + '...' : '',
+        lastUsed:     used ? formatDateRu(used) : '',
+        row:          i + 1
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * Добавляет новый кабинет (API-ключ) в лист API.
+ * @param {string} name - Название кабинета
+ * @param {string} token - API токен WB
+ * @returns {{ ok: boolean, message: string }}
+ */
+function addApiKeyFromSidebar(name, token) {
+  if (!name || !name.trim())   return { ok: false, message: 'Укажите название кабинета' };
+  if (!token || !token.trim()) return { ok: false, message: 'Укажите API токен' };
+
+  const ss = SpreadsheetApp.getActive();
+  let sheet = ss.getSheetByName(APP.sheets.API);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(APP.sheets.API);
+    sheet.getRange(1, 1, 1, 3).setValues([['Кабинет', 'API Ключ', 'Последнее использование']]);
+    sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#2d5be3').setFontColor('#ffffff');
+  }
+
+  // Проверка дубликатов
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === name.trim().toLowerCase()) {
+      return { ok: false, message: 'Кабинет "' + name.trim() + '" уже существует' };
+    }
+  }
+
+  sheet.appendRow([name.trim(), token.trim(), '']);
+  return { ok: true, message: 'Кабинет "' + name.trim() + '" добавлен' };
+}
+
+/**
+ * Удаляет кабинет (строку) из листа API.
+ * @param {number} row - Номер строки (1-based)
+ * @returns {{ ok: boolean, message: string }}
+ */
+function removeApiKeyFromSidebar(row) {
+  const ss = SpreadsheetApp.getActive();
+  const sheet = ss.getSheetByName(APP.sheets.API);
+  if (!sheet) return { ok: false, message: 'Лист API не найден' };
+
+  if (row < 2 || row > sheet.getLastRow()) {
+    return { ok: false, message: 'Неверный номер строки' };
+  }
+
+  const name = sheet.getRange(row, 1).getValue();
+  sheet.deleteRow(row);
+  return { ok: true, message: 'Кабинет "' + name + '" удалён' };
+}
+
+/**
+ * Проверяет валидность API-токена через ping.
+ * @param {string} token
+ * @returns {{ ok: boolean, message: string }}
+ */
+function validateApiToken(token) {
+  if (!token || !token.trim()) return { ok: false, message: 'Токен пуст' };
+
+  try {
+    const resp = UrlFetchApp.fetch('https://common-api.wildberries.ru/ping', {
+      method: 'get',
+      headers: { 'Authorization': token.trim() },
+      muteHttpExceptions: true
+    });
+    const code = resp.getResponseCode();
+    if (code === 200) return { ok: true, message: 'Токен валиден' };
+    return { ok: false, message: 'Токен невалиден (HTTP ' + code + ')' };
+  } catch (e) {
+    return { ok: false, message: 'Ошибка проверки: ' + e.message };
+  }
+}
+
+// ============================================================
 // ПОЛНЫЙ ЦИКЛ ЗАГРУЗКИ
 // ============================================================
 
@@ -295,6 +404,8 @@ function loadAll() {
     loadSales();
     loadFinance();
     loadBalance();
+    loadCampaignBudgets();
+    loadCostHistory();
     buildExpensesFromFinance();
     buildDDR();
 

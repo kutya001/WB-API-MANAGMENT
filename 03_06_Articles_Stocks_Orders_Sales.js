@@ -427,7 +427,7 @@ function _loadStatisticsByLastChangeDate(endpoint, sheetName, dateFromSettingKey
           'statistics',
           endpoint,
           'GET', null, item.apiKey,
-          { dateFrom: currentDateFrom }
+          { dateFrom: currentDateFrom, flag: 0 }
         );
       } catch (e) {
         Logger.log(`[${logFuncName}] Кабинет "${item.cabinet}" стр.${page}: ${e.message}`);

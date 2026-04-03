@@ -280,6 +280,34 @@
     </button>
   </div>
 
+  <!-- Управление токенами -->
+  <div class="section-title section-toggle" onclick="toggleSection(this)">
+    🔑 Управление токенами <span class="arrow">▼</span>
+  </div>
+  <div class="section-body">
+    <div id="token-list" style="margin-bottom:8px">
+      <span style="color:#888;font-size:11px">Загрузка...</span>
+    </div>
+    <div style="border:1px solid #e8eaf6;border-radius:7px;padding:8px;margin-bottom:6px;background:#fff">
+      <div class="form-group" style="margin-bottom:6px">
+        <label>Название кабинета</label>
+        <input type="text" id="new-cab-name" placeholder="Мой магазин">
+      </div>
+      <div class="form-group" style="margin-bottom:6px">
+        <label>API Токен</label>
+        <input type="password" id="new-cab-token" placeholder="eyJhbGciOi...">
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-primary" onclick="addApiKey()" style="flex:1">
+          <span class="icon">➕</span> Добавить
+        </button>
+        <button class="btn btn-secondary" onclick="validateToken()" style="flex:0 0 auto">
+          <span class="icon">🔍</span> Проверить
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Полное обновление -->
   <div class="section-title">🚀 Полное обновление</div>
   <button class="btn btn-primary" data-func="loadAll" onclick="run('loadAll')">
@@ -354,11 +382,17 @@
     <button class="btn btn-group" data-func="loadAllFinance" onclick="run('loadAllFinance')">
       <span class="icon">💳</span> Обновить все Финансы
     </button>
-    <button class="btn btn-secondary" data-func="loadFinance" onclick="run('loadFinance')">
-      <span class="icon">🧾</span> Финансовый отчёт
-    </button>
     <button class="btn btn-secondary" data-func="loadBalance" onclick="run('loadBalance')">
       <span class="icon">💳</span> Баланс продавца
+    </button>
+    <button class="btn btn-secondary" data-func="loadCampaignBudgets" onclick="run('loadCampaignBudgets')">
+      <span class="icon">💰</span> Бюджет кампаний
+    </button>
+    <button class="btn btn-secondary" data-func="loadCostHistory" onclick="run('loadCostHistory')">
+      <span class="icon">📊</span> История затрат
+    </button>
+    <button class="btn btn-secondary" data-func="loadFinance" onclick="run('loadFinance')">
+      <span class="icon">🧾</span> Финансовый отчёт
     </button>
   </div>
 
@@ -447,6 +481,7 @@
       <li><span class="key">Статистика</span><span class="title">Заказы, продажи, финансы</span></li>
       <li><span class="key">Поставки FBW</span><span class="title">Поставки (/api/v1/supplies/...)</span></li>
       <li><span class="key">Финансы</span><span class="title">Баланс (/api/v1/account/balance)</span></li>
+      <li><span class="key">Продвижение</span><span class="title">Бюджеты, затраты на рекламу (/adv/v1/...)</span></li>
     </ul>
   </div>
 </div>
@@ -657,7 +692,9 @@
     SUPPLIES_DATE_TYPE: { label: 'Поставки: тип даты',  desc: '', group: 'Поставки', type: 'select', options: ['factDate','createDate','supplyDate'] },
     SUPPLIES_STATUS_IDS:{ label: 'Поставки: статусы',   desc: 'Через запятую: 1,2,3', group: 'Поставки' },
     SUPPLIES_LIMIT:     { label: 'Поставки: лимит',     desc: 'Макс. 1000', group: 'Поставки', type: 'number' },
-    STOCKS_WAREHOUSE_IDS:{ label: 'Остатки: ID складов', desc: 'Через запятую (пусто = все)', group: 'Остатки' }
+    STOCKS_WAREHOUSE_IDS:{ label: 'Остатки: ID складов', desc: 'Через запятую (пусто = все)', group: 'Остатки' },
+    PROMO_DATE_FROM:    { label: 'Продвижение: с',     desc: 'Период затрат с',    group: 'Продвижение', type: 'date' },
+    PROMO_DATE_TO:      { label: 'Продвижение: по',    desc: 'Период затрат по',   group: 'Продвижение', type: 'date' }
   };
 
   function renderSettingsForm(settings) {
@@ -761,9 +798,92 @@
   }
   function escAttr(str) { return String(str || '').replace(/"/g, '&quot;'); }
 
+  // ── Управление токенами ──────────────────────────────
+  function loadTokenList() {
+    var container = document.getElementById('token-list');
+    container.innerHTML = '<span style="color:#888;font-size:11px">Загрузка...</span>';
+
+    google.script.run
+      .withSuccessHandler(function(keys) {
+        if (!keys || !keys.length) {
+          container.innerHTML = '<span style="color:#888;font-size:11px">Нет кабинетов. Добавьте ниже.</span>';
+          return;
+        }
+        var html = '';
+        keys.forEach(function(k) {
+          html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;border-bottom:1px solid #f0f0f0">'
+            + '<span style="flex:1;font-weight:600">' + escHtml(k.name) + '</span>'
+            + '<span style="color:#888;font-size:10px">' + escHtml(k.tokenPreview) + '</span>'
+            + '<button onclick="removeApiKey(' + k.row + ',\'' + escAttr(k.name) + '\')" '
+            + 'style="background:none;border:none;color:#d32f2f;cursor:pointer;font-size:13px;padding:2px 4px" title="Удалить">✕</button>'
+            + '</div>';
+        });
+        container.innerHTML = html;
+      })
+      .withFailureHandler(function() {
+        container.innerHTML = '<span style="color:#888;font-size:11px">Ошибка загрузки</span>';
+      })
+      .getApiKeysForSidebar();
+  }
+
+  function addApiKey() {
+    var name  = document.getElementById('new-cab-name').value.trim();
+    var token = document.getElementById('new-cab-token').value.trim();
+    if (!name || !token) { setStatus('⚠️ Заполните название и токен', 'error'); return; }
+
+    setStatus('<span class="spinner"></span> Добавление...', 'loading');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.ok) {
+          setStatus('✅ ' + res.message, 'ok');
+          document.getElementById('new-cab-name').value = '';
+          document.getElementById('new-cab-token').value = '';
+          loadTokenList();
+          loadCabinets();
+        } else {
+          setStatus('❌ ' + (res && res.message || 'Ошибка'), 'error');
+        }
+      })
+      .withFailureHandler(function(err) { setStatus('❌ ' + err.message, 'error'); })
+      .addApiKeyFromSidebar(name, token);
+  }
+
+  function removeApiKey(row, name) {
+    if (!confirm('Удалить кабинет "' + name + '"?')) return;
+
+    setStatus('<span class="spinner"></span> Удаление...', 'loading');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.ok) {
+          setStatus('✅ ' + res.message, 'ok');
+          loadTokenList();
+          loadCabinets();
+        } else {
+          setStatus('❌ ' + (res && res.message || 'Ошибка'), 'error');
+        }
+      })
+      .withFailureHandler(function(err) { setStatus('❌ ' + err.message, 'error'); })
+      .removeApiKeyFromSidebar(row);
+  }
+
+  function validateToken() {
+    var token = document.getElementById('new-cab-token').value.trim();
+    if (!token) { setStatus('⚠️ Введите токен для проверки', 'error'); return; }
+
+    setStatus('<span class="spinner"></span> Проверка токена...', 'loading');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.ok) setStatus('✅ ' + res.message, 'ok');
+        else setStatus('❌ ' + (res && res.message || 'Невалиден'), 'error');
+      })
+      .withFailureHandler(function(err) { setStatus('❌ ' + err.message, 'error'); })
+      .validateApiToken(token);
+  }
+
   // ── Инициализация ────────────────────────────────────
   loadSheetsData();
   loadCabinets();
+  loadTokenList();
 </script>
 </body>
 </html>

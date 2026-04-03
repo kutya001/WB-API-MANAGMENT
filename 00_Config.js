@@ -84,6 +84,12 @@ const WB_API = {
     baseUrl: 'https://finance-api.wildberries.ru',
     tokenCategory: 'Финансы',
     rateLimit: { requests: 1, windowMs: 60000, sleepMs: 61000 }
+  },
+  // Продвижение: рекламные кампании, бюджеты, статистика
+  promotion: {
+    baseUrl: 'https://advert-api.wildberries.ru',
+    tokenCategory: 'Продвижение',
+    rateLimit: { requests: 10, windowMs: 60000, sleepMs: 6100 }
   }
 };
 
@@ -110,6 +116,8 @@ const APP = {
     SUPPLY_GOODS:      'ПОСТАВКИ_ТОВАРЫ',
     SUPPLY_PACKAGES:   'ПОСТАВКИ_УПАКОВКА',
     BALANCE:           'БАЛАНС',
+    CAMPAIGN_BUDGET:   'БЮДЖЕТ_КАМПАНИЙ',
+    COST_HISTORY:      'ИСТОРИЯ_ЗАТРАТ',
     ARTICLE_BARCODES:  'АРТИКУЛ_БАРКОДЫ',
     STOCKS_BY_BARCODE: 'ОСТАТКИ_БАРКОДЫ'
   },
@@ -128,6 +136,9 @@ const APP = {
     SUPPLIES_STATUS_IDS:    'SUPPLIES_STATUS_IDS',
     SUPPLIES_LIMIT:         'SUPPLIES_LIMIT',
     STOCKS_WAREHOUSE_IDS:   'STOCKS_WAREHOUSE_IDS',
+    // Продвижение
+    PROMO_DATE_FROM:        'PROMO_DATE_FROM',
+    PROMO_DATE_TO:          'PROMO_DATE_TO',
     // Пагинация
     MAX_PAGES_PER_RUN:      'MAX_PAGES_PER_RUN'
   },
@@ -171,7 +182,11 @@ const DEFAULT_SETTINGS = [
   { key: 'SUPPLIES_LIMIT',        value: '1000',          group: 'Поставки', description: 'Поставки: кол-во за один запрос (макс. 1000)' },
 
   // --- Остатки ---
-  { key: 'STOCKS_WAREHOUSE_IDS',  value: '',              group: 'Остатки',  description: 'Остатки: ID складов через запятую (пусто = первый склад)' }
+  { key: 'STOCKS_WAREHOUSE_IDS',  value: '',              group: 'Остатки',  description: 'Остатки: ID складов через запятую (пусто = первый склад)' },
+
+  // --- Продвижение ---
+  { key: 'PROMO_DATE_FROM',       value: '2026-04-01',    group: 'Продвижение', description: 'Продвижение: история затрат с (YYYY-MM-DD)' },
+  { key: 'PROMO_DATE_TO',         value: '2026-04-30',    group: 'Продвижение', description: 'Продвижение: история затрат по (YYYY-MM-DD)' }
 ];
 
 // ============================================================
@@ -535,6 +550,47 @@ const SHEET_SCHEMAS = {
     desc: {
       current:'Общий баланс на счёте WB',
       for_withdraw:'Сумма, доступная для вывода прямо сейчас'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // БЮДЖЕТ_КАМПАНИЙ — бюджеты рекламных кампаний (Promotion API)
+  // ----------------------------------------------------------
+  [APP.sheets.CAMPAIGN_BUDGET]: {
+    keys: ['cabinet','loadedAt','advertId','advertName','type','status','dailyBudget','budget','budgetCash','budgetNetting'],
+    titles: {
+      cabinet:'Кабинет', loadedAt:'Дата загрузки',
+      advertId:'ID кампании', advertName:'Название', type:'Тип', status:'Статус',
+      dailyBudget:'Дневной бюджет', budget:'Общий бюджет', budgetCash:'Нал.', budgetNetting:'Взаимозачёт'
+    },
+    desc: {
+      advertId:'ID рекламной кампании WB',
+      type:'4=Каталог, 5=Карточка, 6=Поиск, 7=Рекомендации, 8=Авто, 9=Поиск+Каталог',
+      status:'4=Готова, 7=Идёт, 8=На модерации, 9=Активна, 11=На паузе',
+      dailyBudget:'Дневной лимит расходов',
+      budget:'Полный бюджет кампании',
+      budgetCash:'Остаток бюджета (наличные)',
+      budgetNetting:'Остаток бюджета (взаимозачёт)'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // ИСТОРИЯ_ЗАТРАТ — история расходов на рекламу по дням (Promotion API)
+  // ----------------------------------------------------------
+  [APP.sheets.COST_HISTORY]: {
+    keys: ['cabinet','date','advertId','advertName','type','status','views','clicks','ctr','cpc','sum','atbs','orders','cr','shks','sum_price'],
+    titles: {
+      cabinet:'Кабинет', date:'Дата',
+      advertId:'ID кампании', advertName:'Название', type:'Тип', status:'Статус',
+      views:'Показы', clicks:'Клики', ctr:'CTR %', cpc:'CPC', sum:'Расход',
+      atbs:'В корзину', orders:'Заказов', cr:'CR %', shks:'Штук', sum_price:'Сумма заказов'
+    },
+    desc: {
+      sum:'Сумма расхода за день (руб.)',
+      ctr:'Click-Through Rate (клики/показы × 100)',
+      cpc:'Cost Per Click (расход/клики)',
+      cr:'Conversion Rate (заказы/клики × 100)',
+      atbs:'Добавлений в корзину'
     }
   },
 
