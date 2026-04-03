@@ -250,34 +250,16 @@ function getOrCreateSheet(name) {
 }
 
 /**
- * Записывает массив объектов в лист Google Sheets.
- * Автоматически использует схему из SHEET_SCHEMAS если она есть.
- *
- * @param {string} sheetName - Имя листа (из APP.sheets)
- * @param {Object[]} objects - Массив данных
- * @param {string[]} [headersOverride] - Перекрыть порядок полей (если нет схемы)
- *
- * ПОВЕДЕНИЕ:
- *  1. Лист очищается полностью
- *  2. Строка 1 = русские заголовки (из схемы или ключи как есть)
- *  3. Строки 2+ = данные
- *  4. Date-объекты форматируются через formatDateRu()
- *  5. null/undefined → пустая строка
- *  6. объекты → JSON.stringify
+ * Определяет порядок ключей для записи.
+ * @param {string} sheetName
+ * @param {Object[]} objects
+ * @param {string[]} [headersOverride]
+ * @returns {{ keys: string[], headers: string[], schema: Object|null }}
  */
-function writeObjectsToSheet(sheetName, objects, headersOverride) {
-  const sheet = getOrCreateSheet(sheetName);
-  sheet.clearContents();
-
-  if (!objects || !objects.length) {
-    sheet.getRange(1, 1).setValue('Нет данных');
-    return 0;
-  }
-
+function _resolveSheetKeys(sheetName, objects, headersOverride) {
   const schema = getSheetSchema(sheetName);
-
-  // Определить порядок ключей
   let keys;
+
   if (schema) {
     keys = schema.keys.slice();
   } else if (headersOverride && headersOverride.length) {
@@ -288,26 +270,87 @@ function writeObjectsToSheet(sheetName, objects, headersOverride) {
     keys = Array.from(keySet);
   }
 
-  // Заголовки
   const headers = schema
     ? keys.map(k => schema.titles[k] || k)
     : keys;
+
+  return { keys, headers, schema };
+}
+
+/**
+ * Конвертирует значение ячейки для записи.
+ * @param {*} v
+ * @returns {*}
+ */
+function _cellValue(v) {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return formatDateRu(v);
+  if (typeof v === 'object') return JSON.stringify(v);
+  return v;
+}
+
+/**
+ * Записывает массив объектов в лист Google Sheets.
+ * Автоматически использует схему из SHEET_SCHEMAS если она есть.
+ *
+ * ВАЖНО: Очищает только колонки схемы — формулы правее остаются.
+ *
+ * @param {string} sheetName - Имя листа (из APP.sheets)
+ * @param {Object[]} objects - Массив данных
+ * @param {string[]} [headersOverride] - Перекрыть порядок полей (если нет схемы)
+ * @returns {number} - Количество записанных строк
+ */
+function writeObjectsToSheet(sheetName, objects, headersOverride) {
+  const sheet = getOrCreateSheet(sheetName);
+
+  if (!objects || !objects.length) {
+    sheet.getRange(1, 1).setValue('Нет данных');
+    return 0;
+  }
+
+  const { keys, headers } = _resolveSheetKeys(sheetName, objects, headersOverride);
+  const numCols = keys.length;
+
+  // Очищаем только колонки данных (без формул правее)
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 0) {
+    sheet.getRange(1, 1, lastRow, numCols).clearContent();
+  }
 
   // Данные
   const values = [headers];
 
   objects.forEach(obj => {
-    const row = keys.map(k => {
-      const v = obj[k];
-      if (v === null || v === undefined) return '';
-      if (v instanceof Date) return formatDateRu(v);
-      if (typeof v === 'object') return JSON.stringify(v);
-      return v;
-    });
-    values.push(row);
+    values.push(keys.map(k => _cellValue(obj[k])));
   });
 
-  sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+  sheet.getRange(1, 1, values.length, numCols).setValues(values);
+  return objects.length;
+}
+
+/**
+ * Дописывает объекты в конец листа (инкрементальное обновление).
+ * Если лист пуст — создаёт заголовок.
+ *
+ * @param {string} sheetName - Имя листа
+ * @param {Object[]} objects - Новые строки
+ * @returns {number} - Количество добавленных строк
+ */
+function appendObjectsToSheet(sheetName, objects) {
+  if (!objects || !objects.length) return 0;
+
+  const sheet = getOrCreateSheet(sheetName);
+  const { keys, headers } = _resolveSheetKeys(sheetName, objects);
+  const numCols = keys.length;
+
+  // Если лист пустой — пишем заголовок
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, numCols).setValues([headers]);
+  }
+
+  const values = objects.map(obj => keys.map(k => _cellValue(obj[k])));
+  const startRow = sheet.getLastRow() + 1;
+  sheet.getRange(startRow, 1, values.length, numCols).setValues(values);
   return objects.length;
 }
 
@@ -384,6 +427,13 @@ function getApiKeys() {
     throw new Error('Лист "API" не содержит ни одного кабинета. Заполните колонки A (кабинет) и B (токен).');
   }
 
+  // Фильтр по выбранным кабинетам (если установлен)
+  const selected = getCabinetSelection();
+  if (selected && selected.length) {
+    const filtered = result.filter(r => selected.includes(r.cabinet));
+    if (filtered.length) return filtered;
+  }
+
   return result;
 }
 
@@ -444,4 +494,44 @@ function pickString(obj, keys) {
     if (v !== '' && v !== null && v !== undefined) return String(v);
   }
   return '';
+}
+
+// ============================================================
+// СЕКЦИЯ: ВЫБОР КАБИНЕТОВ (UserProperties)
+// ============================================================
+
+/**
+ * Сохраняет выбранные кабинеты для фильтрации.
+ * Пустой массив = все кабинеты.
+ * @param {string[]} cabinetNames
+ */
+function saveCabinetSelection(cabinetNames) {
+  const prop = PropertiesService.getUserProperties();
+  prop.setProperty('SELECTED_CABINETS', JSON.stringify(cabinetNames || []));
+}
+
+/**
+ * Возвращает выбранные кабинеты.
+ * @returns {string[]} - Пустой массив = все
+ */
+function getCabinetSelection() {
+  try {
+    const raw = PropertiesService.getUserProperties().getProperty('SELECTED_CABINETS');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Возвращает список всех кабинетов из листа API.
+ * @returns {{ name: string, selected: boolean }[]}
+ */
+function getCabinetList() {
+  const all = getApiKeys();
+  const selected = getCabinetSelection();
+  return all.map(c => ({
+    name: c.cabinet,
+    selected: !selected.length || selected.includes(c.cabinet)
+  }));
 }

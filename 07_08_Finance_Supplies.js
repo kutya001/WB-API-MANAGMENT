@@ -268,6 +268,9 @@ function _getSupplyTasks() {
 /**
  * Загружает детали каждой поставки (GET /api/v1/supplies/{ID}).
  * Записывает в лист ПОСТАВКИ_ДЕТАЛИ.
+ *
+ * API: https://supplies-api.wildberries.ru/api/v1/supplies/{ID}
+ * Лимит: 30 запросов/мин, интервал 2 сек
  */
 function loadSupplyDetails() {
   const tasks = _getSupplyTasks();
@@ -280,7 +283,7 @@ function loadSupplyDetails() {
         'supplies',
         `/api/v1/supplies/${encodeURIComponent(task.supplyID)}`,
         'GET', null, task.apiKey,
-        { isPreorderID: 'false' }
+        { isPreorderID: false }
       );
     } catch (e) {
       Logger.log(`[loadSupplyDetails] supplyID=${task.supplyID}: ${e.message}`);
@@ -290,18 +293,31 @@ function loadSupplyDetails() {
     if (!resp || typeof resp !== 'object') return;
 
     rows.push({
-      cabinet:      task.cabinet,
-      supplyID:     task.supplyID,
-      name:         resp.name        || '',
-      createdAt:    formatDateRu(resp.createdAt),
-      closedAt:     formatDateRu(resp.closedAt),
-      scanDt:       formatDateRu(resp.scanDt),
-      statusId:     resp.statusId    || '',
-      cargoType:    resp.cargoType   || '',
-      isLargeCargo: resp.isLargeCargo ? 'Да' : 'Нет'
+      cabinet:                   task.cabinet,
+      supplyID:                  task.supplyID,
+      statusID:                  pickNumber(resp, ['statusID', 'statusId']),
+      boxTypeID:                 pickNumber(resp, ['boxTypeID', 'boxTypeName']),
+      createDate:                formatDateRu(resp.createDate),
+      supplyDate:                formatDateRu(resp.supplyDate),
+      factDate:                  formatDateRu(resp.factDate),
+      updatedDate:               formatDateRu(resp.updatedDate),
+      warehouseName:             pickString(resp, ['warehouseName']),
+      actualWarehouseName:       pickString(resp, ['actualWarehouseName']),
+      acceptanceCost:            pickNumber(resp, ['acceptanceCost']),
+      paidAcceptanceCoefficient: pickNumber(resp, ['paidAcceptanceCoefficient']),
+      quantity:                  pickNumber(resp, ['quantity']),
+      readyForSaleQuantity:      pickNumber(resp, ['readyForSaleQuantity']),
+      acceptedQuantity:          pickNumber(resp, ['acceptedQuantity']),
+      unloadingQuantity:         pickNumber(resp, ['unloadingQuantity']),
+      depersonalizedQuantity:    pickNumber(resp, ['depersonalizedQuantity']),
+      supplierAssignName:        pickString(resp, ['supplierAssignName']),
+      storageCoef:               pickString(resp, ['storageCoef']),
+      deliveryCoef:              pickString(resp, ['deliveryCoef']),
+      isBoxOnPallet:             resp.isBoxOnPallet ? 'Да' : 'Нет'
     });
 
-    Utilities.sleep(WB_API.supplies.rateLimit.sleepMs);
+    // 30 запросов/мин → интервал 2 сек
+    Utilities.sleep(2100);
   });
 
   const count = writeObjectsToSheet(APP.sheets.SUPPLY_DETAILS, rows);
@@ -312,40 +328,66 @@ function loadSupplyDetails() {
 /**
  * Загружает товары каждой поставки (GET /api/v1/supplies/{ID}/goods).
  * Записывает в лист ПОСТАВКИ_ТОВАРЫ.
+ *
+ * API: https://supplies-api.wildberries.ru/api/v1/supplies/{ID}/goods
+ * Лимит: 30 запросов/мин, интервал 2 сек
+ * Пагинация: offset-based (limit + offset)
  */
 function loadSupplyGoods() {
   const tasks = _getSupplyTasks();
   const rows  = [];
 
   tasks.forEach(task => {
-    let resp;
-    try {
-      resp = wbRequest(
-        'supplies',
-        `/api/v1/supplies/${encodeURIComponent(task.supplyID)}/goods`,
-        'GET', null, task.apiKey
-      );
-    } catch (e) {
-      Logger.log(`[loadSupplyGoods] supplyID=${task.supplyID}: ${e.message}`);
-      return;
+    let offset  = 0;
+    const limit = 1000;
+    let hasNext = true;
+
+    while (hasNext) {
+      let resp;
+      try {
+        resp = wbRequest(
+          'supplies',
+          `/api/v1/supplies/${encodeURIComponent(task.supplyID)}/goods`,
+          'GET', null, task.apiKey,
+          { limit, offset, isPreorderID: false }
+        );
+      } catch (e) {
+        Logger.log(`[loadSupplyGoods] supplyID=${task.supplyID} offset=${offset}: ${e.message}`);
+        hasNext = false;
+        break;
+      }
+
+      if (!resp || !Array.isArray(resp) || !resp.length) { hasNext = false; break; }
+
+      resp.forEach(good => {
+        rows.push({
+          cabinet:              task.cabinet,
+          supplyID:             task.supplyID,
+          nmID:                 pickNumber(good, ['nmID', 'nmId']),
+          vendorCode:           pickString(good, ['vendorCode', 'sa_name']),
+          barcode:              pickString(good, ['barcode', 'sku']),
+          techSize:             pickString(good, ['techSize', 'size']),
+          color:                pickString(good, ['color']),
+          quantity:             pickNumber(good, ['quantity']),
+          supplierBoxAmount:    pickNumber(good, ['supplierBoxAmount']),
+          readyForSaleQuantity: pickNumber(good, ['readyForSaleQuantity']),
+          acceptedQuantity:     pickNumber(good, ['acceptedQuantity']),
+          unloadingQuantity:    pickNumber(good, ['unloadingQuantity']),
+          tnved:                pickString(good, ['tnved']),
+          needKiz:              good.needKiz ? 'Да' : 'Нет'
+        });
+      });
+
+      // Если вернулось меньше limit — данные закончились
+      if (resp.length < limit) { hasNext = false; break; }
+
+      offset += limit;
+      // 30 запросов/мин → интервал 2 сек
+      Utilities.sleep(2100);
     }
 
-    if (!resp || !Array.isArray(resp) || !resp.length) return;
-
-    resp.forEach(good => {
-      rows.push({
-        cabinet:       task.cabinet,
-        supplyID:      task.supplyID,
-        nmId:          good.nmId          || good.nmID         || '',
-        vendorCode:    good.vendorCode    || good.sa_name      || '',
-        brand:         good.brand         || '',
-        name:          good.name          || good.title        || '',
-        quantity:      good.quantity      || 0,
-        inWayToClient: good.inWayToClient || 0
-      });
-    });
-
-    Utilities.sleep(WB_API.supplies.rateLimit.sleepMs);
+    // Пауза между поставками
+    Utilities.sleep(2100);
   });
 
   const count = writeObjectsToSheet(APP.sheets.SUPPLY_GOODS, rows);
@@ -425,4 +467,31 @@ function loadSupplyPackages() {
   const count = writeObjectsToSheet(APP.sheets.SUPPLY_PACKAGES, rows);
   SpreadsheetApp.getActive().toast(`Упаковка: ${count} строк`, '📦 Упаковка', 3);
   return count;
+}
+
+// ============================================================
+// ГРУППОВЫЕ ОБНОВЛЕНИЯ
+// ============================================================
+
+/** Обновить все Финансы: отчёт + баланс */
+function loadAllFinance() {
+  loadFinance();
+  loadBalance();
+  SpreadsheetApp.getActive().toast('Финансы обновлены', '💳 Финансы', 3);
+}
+
+/** Обновить все Поставки: список + детали + товары + упаковка */
+function loadAllSupplies() {
+  loadSupplies();
+  loadSupplyDetails();
+  loadSupplyGoods();
+  loadSupplyPackages();
+  SpreadsheetApp.getActive().toast('Поставки обновлены полностью', '🚚 Поставки', 3);
+}
+
+/** Обновить все Отчёты: расходы + ДДР */
+function loadAllReports() {
+  buildExpensesFromFinance();
+  buildDDR();
+  SpreadsheetApp.getActive().toast('Отчёты обновлены', '📈 Отчёты', 3);
 }

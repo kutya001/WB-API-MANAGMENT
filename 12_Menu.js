@@ -4,8 +4,30 @@
  * ============================================================
  * Создаёт меню "🛍️ WB Учёт" при открытии таблицы.
  * Содержит loadAll() — полный цикл обновления данных.
+ * doGet() — точка входа для веб-приложения (мобильный/ПК).
  * ============================================================
  */
+
+// ============================================================
+// WEB APP — для доступа с мобильных и ПК
+// ============================================================
+
+/**
+ * Точка входа для веб-приложения (deploy as web app).
+ * Позволяет открывать UI как отдельную страницу по URL.
+ *
+ * Деплой: Extensions → Apps Script → Deploy → New deployment → Web app
+ *
+ * @param {Object} e - Параметры запроса (GET)
+ * @returns {HtmlOutput}
+ */
+function doGet(e) {
+  return HtmlService.createTemplateFromFile('Sidebar')
+    .evaluate()
+    .setTitle('🛍️ WB Учёт')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
 
 /**
  * Автоматически вызывается при открытии таблицы.
@@ -25,13 +47,30 @@ function onOpen() {
     // --- Товары ---
     .addSubMenu(
       ui.createMenu('📦 Товары')
-        .addItem('🔄 Артикулы',          'loadArticles')
-        .addItem('📊 Остатки WB',         'loadStocksWb')
+        .addItem('🔄 Все товары',          'loadAllGoods')
+        .addSeparator()
+        .addItem('📋 Артикулы',            'loadArticles')
+        .addItem('🔗 Артикул-Баркоды',     'loadArticleBarcodes')
+        .addItem('📊 Остатки WB',           'loadStocksWb')
+        .addItem('📊 Остатки по баркодам',  'loadStocksByBarcode')
+    )
+
+    // --- Поставки FBW ---
+    .addSubMenu(
+      ui.createMenu('🚚 Поставки FBW')
+        .addItem('📦 Все поставки',       'loadAllSupplies')
+        .addSeparator()
+        .addItem('📦 Список поставок',    'loadSupplies')
+        .addItem('📋 Детали поставок',    'loadSupplyDetails')
+        .addItem('🧴 Товары поставок',    'loadSupplyGoods')
+        .addItem('📦 Упаковка поставок',  'loadSupplyPackages')
     )
 
     // --- Заказы и продажи ---
     .addSubMenu(
       ui.createMenu('🛒 Заказы и Продажи')
+        .addItem('📊 Все заказы+продажи', 'loadAllOrdersSales')
+        .addSeparator()
         .addItem('📊 Заказы',   'loadOrders')
         .addItem('💰 Продажи',  'loadSales')
     )
@@ -39,23 +78,18 @@ function onOpen() {
     // --- Финансы ---
     .addSubMenu(
       ui.createMenu('💳 Финансы')
+        .addItem('💳 Все финансы',        'loadAllFinance')
+        .addSeparator()
         .addItem('🧾 Финансовый отчёт',   'loadFinance')
         .addItem('💳 Баланс продавца',    'loadBalance')
-    )
-
-    // --- Поставки FBW ---
-    .addSubMenu(
-      ui.createMenu('🚚 Поставки FBW')
-        .addItem('📦 Список поставок',   'loadSupplies')
-        .addItem('📋 Детали поставок',   'loadSupplyDetails')
-        .addItem('🧴 Товары поставок',   'loadSupplyGoods')
-        .addItem('📦 Упаковка поставок', 'loadSupplyPackages')
     )
 
     // --- Управленческие отчёты ---
     .addSeparator()
     .addSubMenu(
       ui.createMenu('📈 Отчёты')
+        .addItem('📈 Все отчёты',            'loadAllReports')
+        .addSeparator()
         .addItem('📉 Расходы (из Финансов)', 'buildExpensesFromFinance')
         .addItem('📘 ДДР (Доходы-Расходы)',  'buildDDR')
     )
@@ -110,6 +144,52 @@ function getSidebarData() {
 }
 
 /**
+ * Возвращает список кабинетов и их выбранное состояние.
+ * @returns {{ name: string, selected: boolean }[]}
+ */
+function getSidebarCabinets() {
+  try { return getCabinetList(); }
+  catch (e) { return []; }
+}
+
+/**
+ * Сохраняет выбранные кабинеты из Sidebar.
+ * @param {string[]} cabinets
+ * @returns {{ ok: boolean }}
+ */
+function saveCabinetsFromSidebar(cabinets) {
+  try {
+    saveCabinetSelection(cabinets || []);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+/**
+ * Возвращает SHEET_SCHEMAS для автогенерации справки в Sidebar.
+ * @returns {Object} - { sheetName: { keys, titles, desc } }
+ */
+function getSidebarSchemas() {
+  const out = {};
+  Object.keys(SHEET_SCHEMAS).forEach(name => {
+    const s = SHEET_SCHEMAS[name];
+    out[name] = { keys: s.keys, titles: s.titles, desc: s.desc || {} };
+  });
+  return out;
+}
+
+/**
+ * Навигация к листу по имени. Вызывается из Sidebar при клике на лист.
+ * @param {string} sheetName
+ */
+function goToSheetByName(sheetName) {
+  const ss = SpreadsheetApp.getActive();
+  const sheet = ss.getSheetByName(sheetName);
+  if (sheet) ss.setActiveSheet(sheet);
+}
+
+/**
  * Запускает произвольную функцию-загрузчик из Sidebar.
  * Вызывается из JS sidebar через google.script.run.
  *
@@ -119,13 +199,14 @@ function getSidebarData() {
 function runFromSidebar(funcName) {
   // Белый список допустимых функций (защита от инъекций)
   const allowed = [
-    'loadArticles', 'loadStocksWb',
+    'loadArticles', 'loadArticleBarcodes', 'loadStocksWb', 'loadStocksByBarcode',
     'loadOrders', 'loadSales',
     'loadFinance', 'loadBalance',
     'loadSupplies', 'loadSupplyDetails', 'loadSupplyGoods', 'loadSupplyPackages',
     'buildExpensesFromFinance', 'buildDDR',
     'initSettingsSheet', 'initMetadataSheet',
-    'clearLogs', 'loadAll'
+    'clearLogs', 'loadAll',
+    'loadAllGoods', 'loadAllOrdersSales', 'loadAllFinance', 'loadAllSupplies', 'loadAllReports'
   ];
 
   if (!allowed.includes(funcName)) {
@@ -203,7 +284,9 @@ function loadAll() {
 
   try {
     loadArticles();
+    loadArticleBarcodes();
     loadStocksWb();
+    loadStocksByBarcode();
     loadSupplies();
     loadSupplyDetails();
     loadSupplyGoods();

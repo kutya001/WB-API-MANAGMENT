@@ -109,7 +109,9 @@ const APP = {
     SUPPLY_DETAILS:    'ПОСТАВКИ_ДЕТАЛИ',
     SUPPLY_GOODS:      'ПОСТАВКИ_ТОВАРЫ',
     SUPPLY_PACKAGES:   'ПОСТАВКИ_УПАКОВКА',
-    BALANCE:           'БАЛАНС'
+    BALANCE:           'БАЛАНС',
+    ARTICLE_BARCODES:  'АРТИКУЛ_БАРКОДЫ',
+    STOCKS_BY_BARCODE: 'ОСТАТКИ_БАРКОДЫ'
   },
 
   /** Ключи настроек (должны совпадать с ячейками A в листе НАСТРОЙКИ) */
@@ -441,37 +443,61 @@ const SHEET_SCHEMAS = {
   },
 
   // ----------------------------------------------------------
-  // ПОСТАВКИ_ДЕТАЛИ — детали одной поставки
+  // ПОСТАВКИ_ДЕТАЛИ — GET /api/v1/supplies/{ID}
   // ----------------------------------------------------------
   [APP.sheets.SUPPLY_DETAILS]: {
     keys: [
-      'cabinet','supplyID','name','createdAt','closedAt',
-      'scanDt','statusId','cargoType','isLargeCargo'
+      'cabinet','supplyID','statusID','boxTypeID',
+      'createDate','supplyDate','factDate','updatedDate',
+      'warehouseName','actualWarehouseName',
+      'acceptanceCost','paidAcceptanceCoefficient',
+      'quantity','readyForSaleQuantity','acceptedQuantity','unloadingQuantity','depersonalizedQuantity',
+      'supplierAssignName','storageCoef','deliveryCoef','isBoxOnPallet'
     ],
     titles: {
-      cabinet:'Кабинет', supplyID:'ID поставки', name:'Название',
-      createdAt:'Создана', closedAt:'Закрыта',
-      scanDt:'Дата скана', statusId:'Статус', cargoType:'Тип груза', isLargeCargo:'Крупногабаритный'
+      cabinet:'Кабинет', supplyID:'ID поставки', statusID:'Статус ID', boxTypeID:'Тип упаковки ID',
+      createDate:'Дата создания', supplyDate:'Плановая дата', factDate:'Фактическая дата', updatedDate:'Обновлена',
+      warehouseName:'Склад (плановый)', actualWarehouseName:'Склад (фактический)',
+      acceptanceCost:'Стоимость приёмки', paidAcceptanceCoefficient:'Коэффициент платной приёмки',
+      quantity:'Кол-во', readyForSaleQuantity:'Готово к продаже', acceptedQuantity:'Принято', unloadingQuantity:'Выгрузка', depersonalizedQuantity:'Обезличено',
+      supplierAssignName:'Имя продавца', storageCoef:'Коэффициент хранения', deliveryCoef:'Коэффициент логистики', isBoxOnPallet:'На паллете'
     },
     desc: {
-      scanDt:'Дата и время приёмки',
-      cargoType:'1=Короб, 2=Монопаллета, 3=Суперсейф'
+      statusID:'1=Черновик, 2=Подтверждена, 3=Принята, 4=Завершена, 5=Отменена',
+      boxTypeID:'1=Короб, 2=Монопаллета, 3=Суперсейф',
+      factDate:'Фактическая дата приёмки на складе WB',
+      acceptanceCost:'Стоимость платной приёмки (руб.)',
+      storageCoef:'Коэффициент хранения на складе',
+      deliveryCoef:'Коэффициент доставки'
     }
   },
 
   // ----------------------------------------------------------
-  // ПОСТАВКИ_ТОВАРЫ — список товаров в поставке
+  // ПОСТАВКИ_ТОВАРЫ — GET /api/v1/supplies/{ID}/goods
   // ----------------------------------------------------------
   [APP.sheets.SUPPLY_GOODS]: {
-    keys: ['cabinet','supplyID','nmId','vendorCode','brand','name','quantity','inWayToClient'],
+    keys: [
+      'cabinet','supplyID','nmID','vendorCode','barcode',
+      'techSize','color','quantity','supplierBoxAmount',
+      'readyForSaleQuantity','acceptedQuantity','unloadingQuantity',
+      'tnved','needKiz'
+    ],
     titles: {
       cabinet:'Кабинет', supplyID:'ID поставки',
-      nmId:'Артикул WB', vendorCode:'Артикул продавца',
-      brand:'Бренд', name:'Название',
-      quantity:'Количество', inWayToClient:'В пути к клиенту'
+      nmID:'Артикул WB', vendorCode:'Артикул продавца', barcode:'Баркод',
+      techSize:'Тех. размер', color:'Цвет',
+      quantity:'Кол-во', supplierBoxAmount:'Кол-во в коробе',
+      readyForSaleQuantity:'Готово к продаже', acceptedQuantity:'Принято', unloadingQuantity:'Выгрузка',
+      tnved:'ТНВЭД', needKiz:'Нужен КИЗ'
     },
     desc: {
-      quantity:'Количество единиц в поставке'
+      quantity:'Общее количество единиц товара в поставке',
+      supplierBoxAmount:'Количество, которое поставщик положил в короб',
+      readyForSaleQuantity:'Принято и готово к продаже на складе WB',
+      acceptedQuantity:'Принято складом WB',
+      unloadingQuantity:'Выгружено из поставки',
+      tnved:'Код ТН ВЭД',
+      needKiz:'Требуется маркировка КИЗ'
     }
   },
 
@@ -509,6 +535,74 @@ const SHEET_SCHEMAS = {
     desc: {
       current:'Общий баланс на счёте WB',
       for_withdraw:'Сумма, доступная для вывода прямо сейчас'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // АРТИКУЛ_БАРКОДЫ — связка артикулов с баркодами (из Content API sizes)
+  // ----------------------------------------------------------
+  [APP.sheets.ARTICLE_BARCODES]: {
+    keys: ['cabinet', 'nmID', 'vendorCode', 'techSize', 'wbSize', 'barcode', 'chrtID', 'price', 'discountedPrice'],
+    titles: {
+      cabinet:         'Кабинет',
+      nmID:            'Артикул WB',
+      vendorCode:      'Артикул продавца',
+      techSize:        'Тех. размер',
+      wbSize:          'Размер WB',
+      barcode:         'Баркод',
+      chrtID:          'ID характеристики',
+      price:           'Цена',
+      discountedPrice: 'Цена со скидкой'
+    },
+    desc: {
+      nmID:            'Уникальный ID карточки WB',
+      vendorCode:      'Артикул продавца из карточки',
+      techSize:        'Технический размер (размер продавца)',
+      wbSize:          'Размер WB (отображается на сайте)',
+      barcode:         'Баркод (sku) конкретного размера',
+      chrtID:          'ID характеристики (размера) в системе WB',
+      price:           'Розничная цена размера',
+      discountedPrice: 'Цена после скидки'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // ОСТАТКИ_БАРКОДЫ — остатки на складах WB с детализацией по баркоду
+  // Источник: statistics /api/v1/supplier/stocks
+  // ----------------------------------------------------------
+  [APP.sheets.STOCKS_BY_BARCODE]: {
+    keys: ['cabinet', 'loadedAt', 'nmId', 'vendorCode', 'barcode', 'techSize', 'brand', 'subjectName',
+           'warehouseName', 'quantity', 'inWayToClient', 'inWayFromClient', 'quantityFull',
+           'Price', 'Discount', 'isSupply', 'isRealization', 'SCCode', 'daysOnSite'],
+    titles: {
+      cabinet:         'Кабинет',
+      loadedAt:        'Дата загрузки',
+      nmId:            'Артикул WB',
+      vendorCode:      'Артикул продавца',
+      barcode:         'Баркод',
+      techSize:        'Тех. размер',
+      brand:           'Бренд',
+      subjectName:     'Предмет',
+      warehouseName:   'Склад WB',
+      quantity:        'Остаток (шт.)',
+      inWayToClient:   'В пути к клиенту',
+      inWayFromClient: 'В пути от клиента',
+      quantityFull:    'Полный остаток',
+      Price:           'Цена',
+      Discount:        'Скидка %',
+      isSupply:        'Поставка',
+      isRealization:   'Реализация',
+      SCCode:          'Код поставки',
+      daysOnSite:      'Дней на сайте'
+    },
+    desc: {
+      barcode:         'Баркод (SKU) конкретного размера товара',
+      quantity:        'Остаток на конкретном складе WB',
+      quantityFull:    'Полный остаток = склад + в пути',
+      Price:           'Розничная цена без скидки',
+      Discount:        'Процент скидки',
+      daysOnSite:      'Количество дней, сколько товар на сайте WB',
+      SCCode:          'Код поставки (SupplyCode / IncomeID)'
     }
   },
 
