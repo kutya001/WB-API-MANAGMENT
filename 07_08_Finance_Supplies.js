@@ -19,8 +19,8 @@
  * Записывает в лист Поставки_ВБ.
  *
  * API: POST /api/v1/supplies
- * Пагинация: cursor-based (next из ответа)
- * Лимит: 60 запросов/мин
+ * Пагинация: offset-based (limit/offset — query-параметры)
+ * Лимит: 30 запросов/мин, интервал 2 сек
  */
 function loadSupplies() {
   const startedAt = new Date();
@@ -35,54 +35,50 @@ function loadSupplies() {
   const limit     = Math.min(Number(getSetting(APP.settings.SUPPLIES_LIMIT, '1000')) || 1000, 1000);
 
   apiKeys.forEach(item => {
-    let next = 0;
+    let offset = 0;
     let hasMore = true;
 
     while (hasMore) {
+      // Body: dates + statusIDs (top-level); limit/offset — query-параметры
       const payload = {
-        filter: {
+        dates: [{
           dateFrom: dateFrom + 'T00:00:00Z',
           dateTo:   dateTo   + 'T23:59:59Z',
           dateType: dateType
-        },
-        cursor: { limit, offset: next }
+        }]
       };
-      if (statusIDs.length) payload.filter.statusIDs = statusIDs;
+      if (statusIDs.length) payload.statusIDs = statusIDs;
 
       let resp;
       try {
-        resp = wbRequest('supplies', '/api/v1/supplies', 'POST', payload, item.apiKey);
+        resp = wbRequest('supplies', '/api/v1/supplies', 'POST', payload, item.apiKey, { limit, offset });
       } catch (e) {
         Logger.log(`[loadSupplies] Кабинет "${item.cabinet}": ${e.message}`);
         hasMore = false;
         break;
       }
 
-      if (!resp) { hasMore = false; break; }
-
-      const supplies = resp.supplies || resp.data || [];
+      const supplies = Array.isArray(resp) ? resp : [];
       if (!supplies.length) { hasMore = false; break; }
 
       supplies.forEach(s => {
         rows.push({
           cabinet:       item.cabinet,
-          supplyID:      pickString(s, ['ID', 'id', 'supplyID', 'supplyId']),
-          preorderID:    pickString(s, ['preorderID', 'preorderId', 'preorder_id']),
-          createDate:    formatDateRu(s.createDate || s.createdAt),
+          supplyID:      pickString(s, ['supplyID', 'supplyId', 'ID', 'id']),
+          preorderID:    pickString(s, ['preorderID', 'preorderId']),
+          createDate:    formatDateRu(s.createDate),
           supplyDate:    formatDateRu(s.supplyDate),
           factDate:      formatDateRu(s.factDate),
-          updatedDate:   formatDateRu(s.updatedDate || s.updatedAt),
-          statusID:      pickNumber(s, ['statusID', 'statusId', 'status']),
+          updatedDate:   formatDateRu(s.updatedDate),
+          statusID:      pickNumber(s, ['statusID', 'statusId']),
           boxTypeID:     pickNumber(s, ['boxTypeID', 'boxTypeId']),
           isBoxOnPallet: s.isBoxOnPallet ? 'Да' : 'Нет'
         });
       });
 
-      // Пагинация
-      const cursor = resp.cursor || {};
-      next = cursor.next || cursor.offset || 0;
-      hasMore = (cursor.hasNext === true) || (supplies.length >= limit);
-      if (!next && supplies.length < limit) hasMore = false;
+      // Пагинация: offset-based — выходим когда записей меньше лимита
+      if (supplies.length < limit) { hasMore = false; break; }
+      offset += limit;
 
       Utilities.sleep(WB_API.supplies.rateLimit.sleepMs);
     }

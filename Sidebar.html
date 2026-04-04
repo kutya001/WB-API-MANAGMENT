@@ -401,6 +401,31 @@
       <span class="icon">🗑️</span> Очистить логи
     </button>
   </div>
+
+  <!-- Ручные листы -->
+  <div class="section-title section-toggle" onclick="toggleSection(this)">
+    📝 Ручные листы <span class="arrow">▼</span>
+  </div>
+  <div class="section-body">
+    <button class="btn btn-secondary" data-func="initAllManualSheets" onclick="run('initAllManualSheets')">
+      <span class="icon">📝</span> Создать ВСЕ ручные листы
+    </button>
+    <button class="btn btn-secondary" data-func="initManualSheet_Products" onclick="run('initManualSheet_Products')">
+      <span class="icon">🏷️</span> Товары
+    </button>
+    <button class="btn btn-secondary" data-func="initManualSheet_Planning" onclick="run('initManualSheet_Planning')">
+      <span class="icon">📅</span> Планирование
+    </button>
+    <button class="btn btn-secondary" data-func="initManualSheet_SewingLaunch" onclick="run('initManualSheet_SewingLaunch')">
+      <span class="icon">✂️</span> Запуск ШВ
+    </button>
+    <button class="btn btn-secondary" data-func="initManualSheet_SewingOutput" onclick="run('initManualSheet_SewingOutput')">
+      <span class="icon">📦</span> Выпуск ШВ
+    </button>
+    <button class="btn btn-secondary" data-func="initManualSheet_Fulfillment" onclick="run('initManualSheet_Fulfillment')">
+      <span class="icon">📋</span> Фуллфилмент и упаковка
+    </button>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->

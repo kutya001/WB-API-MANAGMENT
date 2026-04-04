@@ -71,7 +71,7 @@ const WB_API = {
   supplies: {
     baseUrl: 'https://supplies-api.wildberries.ru',
     tokenCategory: 'Поставки FBW',
-    rateLimit: { requests: 60, windowMs: 60000, sleepMs: 1100 }
+    rateLimit: { requests: 30, windowMs: 60000, sleepMs: 2100 }
   },
   // Аналитика: воронка продаж, история остатков
   analytics: {

@@ -78,6 +78,18 @@ function onOpen() {
     // --- Расчёты ---
     .addItem('📊 Рассчитать остатки', 'buildStocksCalc')
 
+    // --- Ручные листы ---
+    .addSubMenu(
+      ui.createMenu('📝 Ручные листы')
+        .addItem('📝 Создать ВСЕ ручные листы', 'initAllManualSheets')
+        .addSeparator()
+        .addItem('🏷️ Товары',                'initManualSheet_Products')
+        .addItem('📅 Планирование',           'initManualSheet_Planning')
+        .addItem('✂️ Запуск ШВ',              'initManualSheet_SewingLaunch')
+        .addItem('📦 Выпуск ШВ',              'initManualSheet_SewingOutput')
+        .addItem('📋 Фуллфилмент и упаковка', 'initManualSheet_Fulfillment')
+    )
+
     // --- Общие действия ---
     .addSeparator()
     .addItem('🚀 Обновить ВСЁ',  'loadAll')
@@ -232,6 +244,9 @@ function runFromSidebar(funcName) {
     'loadSupplies', 'loadSupplyDetails',
     'loadAdExpenses', 'buildStocksCalc',
     'initSettingsSheet', 'initMetadataSheet',
+    'initManualSheet_Products', 'initManualSheet_Planning',
+    'initManualSheet_SewingLaunch', 'initManualSheet_SewingOutput',
+    'initManualSheet_Fulfillment', 'initAllManualSheets',
     'clearLogs', 'loadAll',
     'loadAllGoods', 'loadAllOrdersSales', 'loadAllSupplies'
   ];
@@ -451,3 +466,14 @@ function loadAll() {
     SpreadsheetApp.getUi().alert(`Ошибка при loadAll:\n${e.message}`);
   }
 }
+
+// ============================================================
+// ОБЁРТКИ ДЛЯ МЕНЮ — создание отдельных ручных листов
+// ============================================================
+// GAS-меню не позволяет передавать аргументы, поэтому нужны обёртки.
+
+function initManualSheet_Products()      { return initManualSheet(APP.sheets.PRODUCTS); }
+function initManualSheet_Planning()      { return initManualSheet(APP.sheets.PLANNING); }
+function initManualSheet_SewingLaunch()  { return initManualSheet(APP.sheets.SEWING_LAUNCH); }
+function initManualSheet_SewingOutput()  { return initManualSheet(APP.sheets.SEWING_OUTPUT); }
+function initManualSheet_Fulfillment()   { return initManualSheet(APP.sheets.FULFILLMENT); }

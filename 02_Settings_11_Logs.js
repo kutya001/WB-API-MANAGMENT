@@ -142,6 +142,65 @@ function initMetadataSheet() {
 }
 
 // ============================================================
+// РУЧНЫЕ ЛИСТЫ — создание листов для ручного ввода
+// ============================================================
+
+/** Список имён ручных листов */
+const MANUAL_SHEET_NAMES = [
+  APP.sheets.PRODUCTS,
+  APP.sheets.PLANNING,
+  APP.sheets.SEWING_LAUNCH,
+  APP.sheets.SEWING_OUTPUT,
+  APP.sheets.FULFILLMENT
+];
+
+/**
+ * Создаёт (или пересоздаёт заголовки) одного ручного листа по имени.
+ * Если лист уже существует и содержит данные — пишет только заголовки в строку 1.
+ * Если листа нет — создаёт, пишет заголовки и форматирует.
+ *
+ * @param {string} sheetName — техническое имя листа из APP.sheets
+ * @returns {{ ok: boolean, message: string }}
+ */
+function initManualSheet(sheetName) {
+  if (!MANUAL_SHEET_NAMES.includes(sheetName)) {
+    return { ok: false, message: 'Лист "' + sheetName + '" не входит в список ручных листов.' };
+  }
+  const schema = SHEET_SCHEMAS[sheetName];
+  if (!schema) {
+    return { ok: false, message: 'Схема для "' + sheetName + '" не найдена в SHEET_SCHEMAS.' };
+  }
+
+  const sheet = getOrCreateSheet(sheetName);
+  const headers = schema.keys.map(k => schema.titles[k] || k);
+
+  // Записать заголовки
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length)
+    .setFontWeight('bold')
+    .setBackground('#1a1a2e')
+    .setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
+
+  SpreadsheetApp.getActive().toast('Лист "' + sheetName + '" готов к заполнению', '📝 Готово', 3);
+  return { ok: true, message: 'Лист "' + sheetName + '" создан / заголовки обновлены.' };
+}
+
+/**
+ * Создаёт все ручные листы за один вызов.
+ * @returns {{ ok: boolean, message: string }}
+ */
+function initAllManualSheets() {
+  const results = [];
+  MANUAL_SHEET_NAMES.forEach(name => {
+    const r = initManualSheet(name);
+    results.push(name + ': ' + (r.ok ? '✅' : '❌ ' + r.message));
+  });
+  SpreadsheetApp.getActive().toast('Созданы ручные листы: ' + MANUAL_SHEET_NAMES.length, '📝 Готово', 3);
+  return { ok: true, message: results.join('\n') };
+}
+
+// ============================================================
 // 11_Logs.gs — Система логирования
 // ============================================================
 
