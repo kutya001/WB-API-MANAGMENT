@@ -299,25 +299,19 @@
     <span class="icon">🚀</span> Обновить всё
   </button>
 
-  <!-- Товары -->
+  <!-- Артикулы -->
   <div class="section-title section-toggle" onclick="toggleSection(this)">
-    📦 Товары <span class="arrow">▼</span>
+    📦 Артикулы <span class="arrow">▼</span>
   </div>
   <div class="section-body">
     <button class="btn btn-group" data-func="loadAllGoods" onclick="run('loadAllGoods')">
-      <span class="icon">📦</span> Обновить все Товары
+      <span class="icon">📦</span> Обновить все Артикулы
     </button>
     <button class="btn btn-secondary" data-func="loadArticles" onclick="run('loadArticles')">
       <span class="icon">🔄</span> Артикулы (каталог)
     </button>
     <button class="btn btn-secondary" data-func="loadArticleBarcodes" onclick="run('loadArticleBarcodes')">
       <span class="icon">🔗</span> Артикул-Баркоды
-    </button>
-    <button class="btn btn-secondary" data-func="loadStocksWb" onclick="run('loadStocksWb')">
-      <span class="icon">📊</span> Остатки WB
-    </button>
-    <button class="btn btn-secondary" data-func="loadStocksByBarcode" onclick="run('loadStocksByBarcode')">
-      <span class="icon">📊</span> Остатки по баркодам
     </button>
   </div>
 
@@ -333,13 +327,7 @@
       <span class="icon">📦</span> Список поставок
     </button>
     <button class="btn btn-secondary" data-func="loadSupplyDetails" onclick="run('loadSupplyDetails')">
-      <span class="icon">📋</span> Детали поставок
-    </button>
-    <button class="btn btn-secondary" data-func="loadSupplyGoods" onclick="run('loadSupplyGoods')">
-      <span class="icon">🧴</span> Товары поставок
-    </button>
-    <button class="btn btn-secondary" data-func="loadSupplyPackages" onclick="run('loadSupplyPackages')">
-      <span class="icon">📦</span> Упаковка поставок
+      <span class="icon">📋</span> Детализация поставок
     </button>
   </div>
 
@@ -359,41 +347,23 @@
     </button>
   </div>
 
-  <!-- Финансы -->
+  <!-- Реклама -->
   <div class="section-title section-toggle" onclick="toggleSection(this)">
-    💳 Финансы <span class="arrow">▼</span>
+    📣 Реклама <span class="arrow">▼</span>
   </div>
   <div class="section-body">
-    <button class="btn btn-group" data-func="loadAllFinance" onclick="run('loadAllFinance')">
-      <span class="icon">💳</span> Обновить все Финансы
-    </button>
-    <button class="btn btn-secondary" data-func="loadBalance" onclick="run('loadBalance')">
-      <span class="icon">💳</span> Баланс продавца
-    </button>
-    <button class="btn btn-secondary" data-func="loadCampaignBudgets" onclick="run('loadCampaignBudgets')">
-      <span class="icon">💰</span> Бюджет кампаний
-    </button>
-    <button class="btn btn-secondary" data-func="loadCostHistory" onclick="run('loadCostHistory')">
-      <span class="icon">📊</span> История затрат
-    </button>
-    <button class="btn btn-secondary" data-func="loadFinance" onclick="run('loadFinance')">
-      <span class="icon">🧾</span> Финансовый отчёт
+    <button class="btn btn-secondary" data-func="loadAdExpenses" onclick="run('loadAdExpenses')">
+      <span class="icon">📣</span> Рекламные расходы
     </button>
   </div>
 
-  <!-- Отчёты -->
+  <!-- Расчёты -->
   <div class="section-title section-toggle" onclick="toggleSection(this)">
-    📈 Отчёты <span class="arrow">▼</span>
+    📊 Расчёты <span class="arrow">▼</span>
   </div>
   <div class="section-body">
-    <button class="btn btn-group" data-func="loadAllReports" onclick="run('loadAllReports')">
-      <span class="icon">📈</span> Обновить все Отчёты
-    </button>
-    <button class="btn btn-success" data-func="buildExpensesFromFinance" onclick="run('buildExpensesFromFinance')">
-      <span class="icon">📉</span> Собрать расходы
-    </button>
-    <button class="btn btn-success" data-func="buildDDR" onclick="run('buildDDR')">
-      <span class="icon">📘</span> Построить ДДР
+    <button class="btn btn-success" data-func="buildStocksCalc" onclick="run('buildStocksCalc')">
+      <span class="icon">📊</span> Рассчитать остатки
     </button>
   </div>
 
@@ -493,10 +463,9 @@
     <table class="help-table" style="margin-top:6px">
       <tr><th>Категория</th><th>Назначение</th></tr>
       <tr><td>Контент</td><td>Артикулы, карточки (/content/v2/...)</td></tr>
-      <tr><td>Статистика</td><td>Заказы, продажи, финансовый отчёт</td></tr>
-      <tr><td>Поставки FBW</td><td>Поставки, детали (/api/v1/supplies/...)</td></tr>
-      <tr><td>Финансы</td><td>Баланс (/api/v1/account/balance)</td></tr>
-      <tr><td>Продвижение</td><td>Бюджеты, затраты на рекламу (/adv/v1/...)</td></tr>
+      <tr><td>Статистика</td><td>Заказы, продажи (/api/v1/supplier/...)</td></tr>
+      <tr><td>Поставки FBW</td><td>Поставки, детализация (/api/v1/supplies/...)</td></tr>
+      <tr><td>Продвижение</td><td>Рекламные расходы (/adv/v1/...)</td></tr>
     </table>
   </div>
 </div>
@@ -658,7 +627,7 @@
 
         var settings = data.settings || {};
         var settingsCount = Object.keys(settings).length;
-        document.getElementById('header-sub').textContent = 'v2.1 | Настроек: ' + settingsCount;
+        document.getElementById('header-sub').textContent = 'v3.0 | Настроек: ' + settingsCount;
 
         var sheets = data.sheets;
         var html = '';
@@ -702,15 +671,11 @@
     MAX_PAGES_PER_RUN:  { label: 'Макс. страниц',      desc: 'Макс. страниц пагинации за один запуск', group: 'Общие', type: 'number' },
     ORDERS_DATE_FROM:   { label: 'Заказы: дата с',      desc: 'Загружать заказы начиная с этой даты',   group: 'Заказы и Продажи',   type: 'date' },
     SALES_DATE_FROM:    { label: 'Продажи: дата с',     desc: 'Загружать продажи начиная с этой даты',  group: 'Заказы и Продажи',   type: 'date' },
-    FINANCE_DATE_FROM:  { label: 'Финансы: период с',   desc: 'Начало финансового периода',  group: 'Финансы',  type: 'date' },
-    FINANCE_DATE_TO:    { label: 'Финансы: период по',  desc: 'Конец финансового периода',   group: 'Финансы',  type: 'date' },
-    FINANCE_PERIOD:     { label: 'Финансы: детализация', desc: 'Группировка по неделям или дням',  group: 'Финансы',  type: 'select', options: ['weekly', 'daily'] },
     SUPPLIES_DATE_FROM: { label: 'Поставки: дата с',    desc: 'Начало периода поставок',     group: 'Поставки', type: 'date' },
     SUPPLIES_DATE_TO:   { label: 'Поставки: дата по',   desc: 'Конец периода поставок',      group: 'Поставки', type: 'date' },
     SUPPLIES_DATE_TYPE: { label: 'Поставки: тип даты',  desc: 'По какой дате фильтровать',   group: 'Поставки', type: 'select', options: ['factDate','createDate','supplyDate'] },
     SUPPLIES_STATUS_IDS:{ label: 'Поставки: статусы',   desc: 'ID статусов через запятую (пусто = все)', group: 'Поставки' },
     SUPPLIES_LIMIT:     { label: 'Поставки: лимит',     desc: 'Записей за один запрос (макс. 1000)', group: 'Поставки', type: 'number' },
-    STOCKS_WAREHOUSE_IDS:{ label: 'Склады: ID',         desc: 'ID складов через запятую (пусто = все)', group: 'Остатки' },
     PROMO_DATE_FROM:    { label: 'Реклама: дата с',     desc: 'Начало периода затрат на рекламу',   group: 'Продвижение', type: 'date' },
     PROMO_DATE_TO:      { label: 'Реклама: дата по',    desc: 'Конец периода затрат на рекламу',    group: 'Продвижение', type: 'date' }
   };

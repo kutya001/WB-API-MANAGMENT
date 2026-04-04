@@ -99,43 +99,39 @@ const WB_API = {
 const APP = {
   /** Технические имена листов — НИКОГДА не переименовывай без поиска по проекту */
   sheets: {
-    API:               'API',
-    SETTINGS:          'НАСТРОЙКИ',
-    METADATA:          'МЕТАДАННЫЕ',
-    LOGS:              'ЛОГИ',
-    ARTICLES:          'ЗАГР_АРТИКУЛЫ',
-    STOCKS_WB:         'ЗАГР_ОСТАТКИ_WB',
-    STOCKS_SELLER:     'ЗАГР_ОСТАТКИ_ПРОДАВЕЦ',
-    ORDERS:            'ЗАГР_ЗАКАЗЫ',
-    SALES:             'ЗАГР_ПРОДАЖИ',
-    FINANCE:           'ЗАГР_ФИНАНСЫ',
-    EXPENSES:          'СБОР_РАСХОДЫ',
-    DDR:               'ОТЧЁТ_ДДР',
-    SUPPLIES:          'ЗАГР_ПОСТАВКИ',
-    SUPPLY_DETAILS:    'ЗАГР_ДЕТАЛИ_ПОСТАВОК',
-    SUPPLY_GOODS:      'ЗАГР_ТОВАРЫ_ПОСТАВОК',
-    SUPPLY_PACKAGES:   'ЗАГР_УПАКОВКА_ПОСТАВОК',
-    BALANCE:           'ЗАГР_БАЛАНС',
-    CAMPAIGN_BUDGET:   'ЗАГР_БЮДЖЕТЫ',
-    COST_HISTORY:      'ЗАГР_ЗАТРАТЫ',
-    ARTICLE_BARCODES:  'ЗАГР_БАРКОДЫ',
-    STOCKS_BY_BARCODE: 'ЗАГР_ОСТАТКИ_БАРКОДЫ'
+    // Системные
+    API:              'API',
+    SETTINGS:         'НАСТРОЙКИ',
+    METADATA:         'МЕТАДАННЫЕ',
+    LOGS:             'ЛОГИ',
+    // API-загружаемые
+    ARTICLES:         'Артикулы_ВБ',
+    ARTICLE_BARCODES: 'Артикулы_Баркоды',
+    SUPPLIES:         'Поставки_ВБ',
+    SUPPLY_DETAILS:   'Поставки_Детализация_ВБ',
+    ORDERS:           'Заказы_ВБ',
+    SALES:            'Продажи_ВБ',
+    AD_EXPENSES:      'Рекламные_расходы',
+    // Расчётные
+    STOCKS_CALC:      'Остатки_ВБ',
+    // Ручные
+    PRODUCTS:         'Товары',
+    PLANNING:         'Планирование',
+    SEWING_LAUNCH:    'Запуск_ШВ',
+    SEWING_OUTPUT:    'Выпуск_ШВ',
+    FULFILLMENT:      'Фуллфилмент_и_упаковка'
   },
 
   /** Ключи настроек (должны совпадать с ячейками A в листе НАСТРОЙКИ) */
   settings: {
     // Даты загрузки
-    SALES_DATE_FROM:        'SALES_DATE_FROM',
     ORDERS_DATE_FROM:       'ORDERS_DATE_FROM',
-    FINANCE_DATE_FROM:      'FINANCE_DATE_FROM',
-    FINANCE_DATE_TO:        'FINANCE_DATE_TO',
-    FINANCE_PERIOD:         'FINANCE_PERIOD',
+    SALES_DATE_FROM:        'SALES_DATE_FROM',
     SUPPLIES_DATE_FROM:     'SUPPLIES_DATE_FROM',
     SUPPLIES_DATE_TO:       'SUPPLIES_DATE_TO',
     SUPPLIES_DATE_TYPE:     'SUPPLIES_DATE_TYPE',
     SUPPLIES_STATUS_IDS:    'SUPPLIES_STATUS_IDS',
     SUPPLIES_LIMIT:         'SUPPLIES_LIMIT',
-    STOCKS_WAREHOUSE_IDS:   'STOCKS_WAREHOUSE_IDS',
     // Продвижение
     PROMO_DATE_FROM:        'PROMO_DATE_FROM',
     PROMO_DATE_TO:          'PROMO_DATE_TO',
@@ -144,7 +140,7 @@ const APP = {
   },
 
   /** Версия системы — обновляй при значительных изменениях */
-  version: '2.0.0'
+  version: '3.0.0'
 };
 
 // ============================================================
@@ -160,19 +156,11 @@ const DEFAULT_SETTINGS = [
   // --- Общие ---
   { key: 'MAX_PAGES_PER_RUN',     value: '5',             group: 'Общие',    description: 'Макс. страниц за один запуск (пагинация)' },
 
-  // --- Артикулы ---
-  // (нет дат — грузим всё)
-
   // --- Заказы ---
   { key: 'ORDERS_DATE_FROM',      value: '2026-04-01',    group: 'Заказы',   description: 'Заказы: загружать с даты (YYYY-MM-DD)' },
 
   // --- Продажи ---
   { key: 'SALES_DATE_FROM',       value: '2026-04-01',    group: 'Продажи',  description: 'Продажи: загружать с даты (YYYY-MM-DD)' },
-
-  // --- Финансы ---
-  { key: 'FINANCE_DATE_FROM',     value: '2026-04-01',    group: 'Финансы',  description: 'Финансы: период с (YYYY-MM-DD)' },
-  { key: 'FINANCE_DATE_TO',       value: '2026-04-30',    group: 'Финансы',  description: 'Финансы: период по (YYYY-MM-DD)' },
-  { key: 'FINANCE_PERIOD',        value: 'weekly',        group: 'Финансы',  description: 'Финансы: тип отчёта (weekly / daily)' },
 
   // --- Поставки FBW ---
   { key: 'SUPPLIES_DATE_FROM',    value: '2026-03-01',    group: 'Поставки', description: 'Поставки: дата начала периода (YYYY-MM-DD)' },
@@ -181,12 +169,9 @@ const DEFAULT_SETTINGS = [
   { key: 'SUPPLIES_STATUS_IDS',   value: '',              group: 'Поставки', description: 'Поставки: фильтр статусов через запятую (пусто = все)' },
   { key: 'SUPPLIES_LIMIT',        value: '1000',          group: 'Поставки', description: 'Поставки: кол-во за один запрос (макс. 1000)' },
 
-  // --- Остатки ---
-  { key: 'STOCKS_WAREHOUSE_IDS',  value: '',              group: 'Остатки',  description: 'Остатки: ID складов через запятую (пусто = первый склад)' },
-
   // --- Продвижение ---
-  { key: 'PROMO_DATE_FROM',       value: '2026-04-01',    group: 'Продвижение', description: 'Продвижение: история затрат с (YYYY-MM-DD)' },
-  { key: 'PROMO_DATE_TO',         value: '2026-04-30',    group: 'Продвижение', description: 'Продвижение: история затрат по (YYYY-MM-DD)' }
+  { key: 'PROMO_DATE_FROM',       value: '2026-04-01',    group: 'Продвижение', description: 'Реклама: история затрат с (YYYY-MM-DD)' },
+  { key: 'PROMO_DATE_TO',         value: '2026-04-30',    group: 'Продвижение', description: 'Реклама: история затрат по (YYYY-MM-DD)' }
 ];
 
 // ============================================================
@@ -208,7 +193,7 @@ const DEFAULT_SETTINGS = [
 const SHEET_SCHEMAS = {
 
   // ----------------------------------------------------------
-  // АРТИКУЛЫ — карточки товаров из Content API
+  // АРТИКУЛЫ_ВБ — карточки товаров из Content API
   // ----------------------------------------------------------
   [APP.sheets.ARTICLES]: {
     keys:   ['cabinet', 'nmID', 'vendorCode', 'brand', 'title', 'category', 'subjectName', 'photoUrl', 'updatedAt'],
@@ -237,41 +222,87 @@ const SHEET_SCHEMAS = {
   },
 
   // ----------------------------------------------------------
-  // ОСТАТКИ_WB — остатки на складах Wildberries (FBW)
-  // Источник: analytics /api/v2/stocks-report
+  // АРТИКУЛЫ_БАРКОДЫ — связка артикулов с баркодами (Content API)
   // ----------------------------------------------------------
-  [APP.sheets.STOCKS_WB]: {
-    keys:   ['cabinet', 'loadedAt', 'nmId', 'vendorCode', 'brand', 'subjectName', 'warehouseName', 'quantity', 'inWayToClient', 'inWayFromClient', 'quantityFull'],
+  [APP.sheets.ARTICLE_BARCODES]: {
+    keys: ['cabinet', 'nmID', 'vendorCode', 'techSize', 'wbSize', 'barcode', 'chrtID', 'price', 'discountedPrice'],
     titles: {
-      cabinet:          'Кабинет',
-      loadedAt:         'Дата загрузки',
-      nmId:             'Артикул WB',
-      vendorCode:       'Артикул продавца',
-      brand:            'Бренд',
-      subjectName:      'Предмет',
-      warehouseName:    'Склад WB',
-      quantity:         'Остаток (шт.)',
-      inWayToClient:    'В пути к клиенту',
-      inWayFromClient:  'В пути от клиента',
-      quantityFull:     'Полный остаток'
+      cabinet:         'Кабинет',
+      nmID:            'Артикул WB',
+      vendorCode:      'Артикул продавца',
+      techSize:        'Тех. размер',
+      wbSize:          'Размер WB',
+      barcode:         'Баркод',
+      chrtID:          'ID характеристики',
+      price:           'Цена',
+      discountedPrice: 'Цена со скидкой'
     },
     desc: {
-      cabinet:          'Название кабинета из листа API',
-      loadedAt:         'Когда были загружены данные',
-      nmId:             'Артикул WB',
-      vendorCode:       'Артикул продавца',
-      brand:            'Бренд',
-      subjectName:      'Предмет',
-      warehouseName:    'Название склада WB',
-      quantity:         'Текущий остаток на складе',
-      inWayToClient:    'Единицы в доставке к покупателю',
-      inWayFromClient:  'Единицы в доставке от покупателя',
-      quantityFull:     'Остаток + в пути к клиенту'
+      nmID:            'Уникальный ID карточки WB',
+      vendorCode:      'Артикул продавца из карточки',
+      techSize:        'Технический размер (размер продавца)',
+      wbSize:          'Размер WB (отображается на сайте)',
+      barcode:         'Баркод (sku) конкретного размера',
+      chrtID:          'ID характеристики (размера) в системе WB',
+      price:           'Розничная цена размера',
+      discountedPrice: 'Цена после скидки'
     }
   },
 
   // ----------------------------------------------------------
-  // ЗАКАЗЫ — Statistics API /api/v1/supplier/orders
+  // ПОСТАВКИ_ВБ — Supplies API /api/v1/supplies
+  // ----------------------------------------------------------
+  [APP.sheets.SUPPLIES]: {
+    keys: [
+      'cabinet','supplyID','preorderID',
+      'createDate','supplyDate','factDate','updatedDate',
+      'statusID','boxTypeID','isBoxOnPallet'
+    ],
+    titles: {
+      cabinet:'Кабинет', supplyID:'ID поставки', preorderID:'ID предзаказа',
+      createDate:'Дата создания', supplyDate:'Плановая дата',
+      factDate:'Фактическая дата', updatedDate:'Обновлена',
+      statusID:'Статус ID', boxTypeID:'Тип упаковки ID', isBoxOnPallet:'На паллете'
+    },
+    desc: {
+      supplyID:'Уникальный ID поставки FBW',
+      statusID:'1=Черновик, 2=Подтверждена, 3=Принята, 4=Завершена, 5=Отменена',
+      factDate:'Фактическая дата приёмки на складе WB'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // ПОСТАВКИ_ДЕТАЛИЗАЦИЯ_ВБ — товары поставки (по артикулам и баркодам)
+  // GET /api/v1/supplies/{ID}/goods
+  // ----------------------------------------------------------
+  [APP.sheets.SUPPLY_DETAILS]: {
+    keys: [
+      'cabinet','supplyID','nmID','vendorCode','barcode',
+      'techSize','color','quantity','supplierBoxAmount',
+      'readyForSaleQuantity','acceptedQuantity','unloadingQuantity',
+      'tnved','needKiz'
+    ],
+    titles: {
+      cabinet:'Кабинет', supplyID:'ID поставки',
+      nmID:'Артикул WB', vendorCode:'Артикул продавца', barcode:'Баркод',
+      techSize:'Тех. размер', color:'Цвет',
+      quantity:'Кол-во', supplierBoxAmount:'Кол-во в коробе',
+      readyForSaleQuantity:'Готово к продаже', acceptedQuantity:'Принято', unloadingQuantity:'Выгрузка',
+      tnved:'ТНВЭД', needKiz:'Нужен КИЗ'
+    },
+    desc: {
+      quantity:'Общее количество единиц товара в поставке',
+      supplierBoxAmount:'Количество, которое поставщик положил в короб',
+      readyForSaleQuantity:'Принято и готово к продаже на складе WB',
+      acceptedQuantity:'Принято складом WB',
+      unloadingQuantity:'Выгружено из поставки',
+      tnved:'Код ТН ВЭД',
+      needKiz:'Требуется маркировка КИЗ'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // ЗАКАЗЫ_ВБ — Statistics API /api/v1/supplier/orders
   // ----------------------------------------------------------
   [APP.sheets.ORDERS]: {
     keys: [
@@ -304,7 +335,7 @@ const SHEET_SCHEMAS = {
   },
 
   // ----------------------------------------------------------
-  // ПРОДАЖИ — Statistics API /api/v1/supplier/sales
+  // ПРОДАЖИ_ВБ — Statistics API /api/v1/supplier/sales
   // ----------------------------------------------------------
   [APP.sheets.SALES]: {
     keys: [
@@ -314,7 +345,7 @@ const SHEET_SCHEMAS = {
       'incomeID','isSupply','isRealization',
       'totalPrice','discountPercent','spp','paymentSaleAmount',
       'forPay','finishedPrice','priceWithDisc',
-      'saleID','sticker','gNumber','srid'
+      'saleID','isReturn','sticker','gNumber','srid'
     ],
     titles: {
       cabinet:'Кабинет', date:'Дата продажи', lastChangeDate:'Дата изменения',
@@ -326,258 +357,20 @@ const SHEET_SCHEMAS = {
       totalPrice:'Цена без скидки', discountPercent:'Скидка %', spp:'СПП %',
       paymentSaleAmount:'Сумма оплаты', forPay:'К выплате WB',
       finishedPrice:'Финальная цена', priceWithDisc:'Цена со скидкой',
-      saleID:'ID продажи', sticker:'Стикер', gNumber:'Номер отгрузки', srid:'SRID'
+      saleID:'ID продажи', isReturn:'Возврат', sticker:'Стикер', gNumber:'Номер отгрузки', srid:'SRID'
     },
     desc: {
       forPay:'Сумма, которую WB перечислит продавцу',
       paymentSaleAmount:'Сумма, которую заплатил покупатель с учётом СПП',
-      saleID:'Уникальный ID продажи. Начинается с S — продажа, R — возврат'
+      saleID:'Уникальный ID продажи. Начинается с S — продажа, R — возврат',
+      isReturn:'Да = возврат (saleID начинается с R)'
     }
   },
 
   // ----------------------------------------------------------
-  // ФИНАНСЫ — Statistics API /api/v5/supplier/reportDetailByPeriod
+  // РЕКЛАМНЫЕ_РАСХОДЫ — Promotion API /adv/v1/fullstats
   // ----------------------------------------------------------
-  [APP.sheets.FINANCE]: {
-    keys: [
-      'cabinet','realizationreport_id','date_from','date_to','create_dt','currency_name',
-      'suppliercontract_code','rrd_id','gi_id',
-      'subject_name','nm_id','brand_name','sa_name','ts_name','barcode',
-      'doc_type_name','quantity',
-      'retail_price','retail_amount','sale_percent','commission_percent',
-      'office_name','supplier_oper_name',
-      'order_dt','sale_dt','rr_dt',
-      'retail_price_withdisc_rub','delivery_amount','return_amount',
-      'ppvz_for_pay','ppvz_reward','acquiring_fee','acquiring_percent',
-      'penalty','additional_payment'
-    ],
-    titles: {
-      cabinet:'Кабинет',
-      realizationreport_id:'ID отчёта реализации', date_from:'Период с', date_to:'Период по',
-      create_dt:'Дата создания', currency_name:'Валюта',
-      suppliercontract_code:'Код договора', rrd_id:'RRD ID', gi_id:'GI ID',
-      subject_name:'Предмет', nm_id:'Артикул WB', brand_name:'Бренд',
-      sa_name:'Артикул продавца', ts_name:'Размер', barcode:'Баркод',
-      doc_type_name:'Тип документа', quantity:'Количество',
-      retail_price:'Розничная цена', retail_amount:'Сумма розничная',
-      sale_percent:'Скидка %', commission_percent:'Комиссия %',
-      office_name:'Офис', supplier_oper_name:'Операция',
-      order_dt:'Дата заказа', sale_dt:'Дата продажи', rr_dt:'Дата отчёта',
-      retail_price_withdisc_rub:'Цена со скидкой, руб',
-      delivery_amount:'Логистика', return_amount:'Возвраты',
-      ppvz_for_pay:'К выплате WB', ppvz_reward:'Вознаграждение WB',
-      acquiring_fee:'Эквайринг', acquiring_percent:'Эквайринг %',
-      penalty:'Штраф', additional_payment:'Доп. начисление'
-    },
-    desc: {
-      rrd_id:'Уникальный ID строки отчёта. Используется для пагинации',
-      doc_type_name:'Продажа / Возврат / Штраф / Логистика',
-      ppvz_for_pay:'Итоговая сумма к выплате по строке',
-      penalty:'Отрицательное значение = удержание WB',
-      additional_payment:'Положительное = доначисление от WB'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // РАСХОДЫ — агрегация из ФИНАНСЫ
-  // ----------------------------------------------------------
-  [APP.sheets.EXPENSES]: {
-    keys: [
-      'cabinet','period','doc_type_name','supplier_oper_name','nm_id','supplier_article',
-      'quantity','gross_amount','payout_amount','wb_expense_estimate',
-      'logistics_amount','penalty_amount','additional_payment','commission_percent'
-    ],
-    titles: {
-      cabinet:'Кабинет', period:'Период (ГГ-ММ)',
-      doc_type_name:'Тип документа', supplier_oper_name:'Операция',
-      nm_id:'Артикул WB', supplier_article:'Артикул продавца', quantity:'Количество',
-      gross_amount:'Валовая сумма', payout_amount:'К выплате',
-      wb_expense_estimate:'Расходы WB (оценка)',
-      logistics_amount:'Логистика', penalty_amount:'Штрафы',
-      additional_payment:'Доп. начисление', commission_percent:'Комиссия %'
-    },
-    desc: {
-      period:'Месяц в формате ГГГГ-ММ',
-      wb_expense_estimate:'Оценка: Валовая сумма − К выплате',
-      logistics_amount:'Стоимость доставки (delivery_amount из ФИНАНСЫ)'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // ДДР — сводный отчёт "Доходы-Расходы" по месяцам
-  // ----------------------------------------------------------
-  [APP.sheets.DDR]: {
-    keys: [
-      'period','cabinet',
-      'orders_count','orders_amount',
-      'sales_count','sales_amount','returns_amount',
-      'gross_finance_amount','wb_payout_amount','wb_expense_estimate',
-      'penalties_amount','logistics_amount',
-      'ddr_net_cashflow_estimate','drr_percent'
-    ],
-    titles: {
-      period:'Период', cabinet:'Кабинет',
-      orders_count:'Заказов (шт.)', orders_amount:'Сумма заказов',
-      sales_count:'Продаж (шт.)', sales_amount:'Сумма продаж',
-      returns_amount:'Возвраты',
-      gross_finance_amount:'Оборот (финансы)',
-      wb_payout_amount:'К выплате WB',
-      wb_expense_estimate:'Расходы WB (оценка)',
-      penalties_amount:'Штрафы',
-      logistics_amount:'Логистика',
-      ddr_net_cashflow_estimate:'Чистый денежный поток (оценка)',
-      drr_percent:'ДРР %'
-    },
-    desc: {
-      period:'Месяц в формате ГГГГ-ММ',
-      ddr_net_cashflow_estimate:'К выплате − Штрафы. Приблизительная оценка',
-      drr_percent:'Доля расходов на рекламу (если есть данные) / оборот × 100'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // ПОСТАВКИ — Supplies API /api/v1/supplies
-  // ----------------------------------------------------------
-  [APP.sheets.SUPPLIES]: {
-    keys: [
-      'cabinet','supplyID','preorderID',
-      'createDate','supplyDate','factDate','updatedDate',
-      'statusID','boxTypeID','isBoxOnPallet'
-    ],
-    titles: {
-      cabinet:'Кабинет', supplyID:'ID поставки', preorderID:'ID предзаказа',
-      createDate:'Дата создания', supplyDate:'Плановая дата',
-      factDate:'Фактическая дата', updatedDate:'Обновлена',
-      statusID:'Статус ID', boxTypeID:'Тип упаковки ID', isBoxOnPallet:'На паллете'
-    },
-    desc: {
-      supplyID:'Уникальный ID поставки FBW',
-      statusID:'1=Черновик, 2=Подтверждена, 3=Принята, 4=Завершена, 5=Отменена',
-      factDate:'Фактическая дата приёмки на складе WB'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // ПОСТАВКИ_ДЕТАЛИ — GET /api/v1/supplies/{ID}
-  // ----------------------------------------------------------
-  [APP.sheets.SUPPLY_DETAILS]: {
-    keys: [
-      'cabinet','supplyID','statusID','boxTypeID',
-      'createDate','supplyDate','factDate','updatedDate',
-      'warehouseName','actualWarehouseName',
-      'acceptanceCost','paidAcceptanceCoefficient',
-      'quantity','readyForSaleQuantity','acceptedQuantity','unloadingQuantity','depersonalizedQuantity',
-      'supplierAssignName','storageCoef','deliveryCoef','isBoxOnPallet'
-    ],
-    titles: {
-      cabinet:'Кабинет', supplyID:'ID поставки', statusID:'Статус ID', boxTypeID:'Тип упаковки ID',
-      createDate:'Дата создания', supplyDate:'Плановая дата', factDate:'Фактическая дата', updatedDate:'Обновлена',
-      warehouseName:'Склад (плановый)', actualWarehouseName:'Склад (фактический)',
-      acceptanceCost:'Стоимость приёмки', paidAcceptanceCoefficient:'Коэффициент платной приёмки',
-      quantity:'Кол-во', readyForSaleQuantity:'Готово к продаже', acceptedQuantity:'Принято', unloadingQuantity:'Выгрузка', depersonalizedQuantity:'Обезличено',
-      supplierAssignName:'Имя продавца', storageCoef:'Коэффициент хранения', deliveryCoef:'Коэффициент логистики', isBoxOnPallet:'На паллете'
-    },
-    desc: {
-      statusID:'1=Черновик, 2=Подтверждена, 3=Принята, 4=Завершена, 5=Отменена',
-      boxTypeID:'1=Короб, 2=Монопаллета, 3=Суперсейф',
-      factDate:'Фактическая дата приёмки на складе WB',
-      acceptanceCost:'Стоимость платной приёмки (руб.)',
-      storageCoef:'Коэффициент хранения на складе',
-      deliveryCoef:'Коэффициент доставки'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // ПОСТАВКИ_ТОВАРЫ — GET /api/v1/supplies/{ID}/goods
-  // ----------------------------------------------------------
-  [APP.sheets.SUPPLY_GOODS]: {
-    keys: [
-      'cabinet','supplyID','nmID','vendorCode','barcode',
-      'techSize','color','quantity','supplierBoxAmount',
-      'readyForSaleQuantity','acceptedQuantity','unloadingQuantity',
-      'tnved','needKiz'
-    ],
-    titles: {
-      cabinet:'Кабинет', supplyID:'ID поставки',
-      nmID:'Артикул WB', vendorCode:'Артикул продавца', barcode:'Баркод',
-      techSize:'Тех. размер', color:'Цвет',
-      quantity:'Кол-во', supplierBoxAmount:'Кол-во в коробе',
-      readyForSaleQuantity:'Готово к продаже', acceptedQuantity:'Принято', unloadingQuantity:'Выгрузка',
-      tnved:'ТНВЭД', needKiz:'Нужен КИЗ'
-    },
-    desc: {
-      quantity:'Общее количество единиц товара в поставке',
-      supplierBoxAmount:'Количество, которое поставщик положил в короб',
-      readyForSaleQuantity:'Принято и готово к продаже на складе WB',
-      acceptedQuantity:'Принято складом WB',
-      unloadingQuantity:'Выгружено из поставки',
-      tnved:'Код ТН ВЭД',
-      needKiz:'Требуется маркировка КИЗ'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // ПОСТАВКИ_УПАКОВКА — упаковка поставки (коробки, паллеты)
-  // ----------------------------------------------------------
-  [APP.sheets.SUPPLY_PACKAGES]: {
-    keys: [
-      'cabinet','supplyID','packageIndex','goodIndex',
-      'packageID','packageName','boxType',
-      'barcode','techSize','wbSize','quantity','nmId','vendorCode'
-    ],
-    titles: {
-      cabinet:'Кабинет', supplyID:'ID поставки',
-      packageIndex:'№ упаковки', goodIndex:'№ товара',
-      packageID:'ID упаковки', packageName:'Название упаковки', boxType:'Тип коробки',
-      barcode:'Баркод', techSize:'Тех. размер', wbSize:'Размер WB',
-      quantity:'Количество', nmId:'Артикул WB', vendorCode:'Артикул продавца'
-    },
-    desc: {
-      barcode:'Баркод единицы товара',
-      boxType:'Тип упаковки (короб / паллета)'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // БАЛАНС — текущий баланс продавца
-  // ----------------------------------------------------------
-  [APP.sheets.BALANCE]: {
-    keys: ['cabinet','loadedAt','currency','current','for_withdraw'],
-    titles: {
-      cabinet:'Кабинет', loadedAt:'Дата загрузки',
-      currency:'Валюта', current:'Текущий баланс', for_withdraw:'Доступно к выводу'
-    },
-    desc: {
-      current:'Общий баланс на счёте WB',
-      for_withdraw:'Сумма, доступная для вывода прямо сейчас'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // БЮДЖЕТ_КАМПАНИЙ — бюджеты рекламных кампаний (Promotion API)
-  // ----------------------------------------------------------
-  [APP.sheets.CAMPAIGN_BUDGET]: {
-    keys: ['cabinet','loadedAt','advertId','advertName','type','status','dailyBudget','budget','budgetCash','budgetNetting'],
-    titles: {
-      cabinet:'Кабинет', loadedAt:'Дата загрузки',
-      advertId:'ID кампании', advertName:'Название', type:'Тип', status:'Статус',
-      dailyBudget:'Дневной бюджет', budget:'Общий бюджет', budgetCash:'Нал.', budgetNetting:'Взаимозачёт'
-    },
-    desc: {
-      advertId:'ID рекламной кампании WB',
-      type:'4=Каталог, 5=Карточка, 6=Поиск, 7=Рекомендации, 8=Авто, 9=Поиск+Каталог',
-      status:'4=Готова, 7=Идёт, 8=На модерации, 9=Активна, 11=На паузе',
-      dailyBudget:'Дневной лимит расходов',
-      budget:'Полный бюджет кампании',
-      budgetCash:'Остаток бюджета (наличные)',
-      budgetNetting:'Остаток бюджета (взаимозачёт)'
-    }
-  },
-
-  // ----------------------------------------------------------
-  // ИСТОРИЯ_ЗАТРАТ — история расходов на рекламу по дням (Promotion API)
-  // ----------------------------------------------------------
-  [APP.sheets.COST_HISTORY]: {
+  [APP.sheets.AD_EXPENSES]: {
     keys: ['cabinet','date','advertId','advertName','type','status','views','clicks','ctr','cpc','sum','atbs','orders','cr','shks','sum_price'],
     titles: {
       cabinet:'Кабинет', date:'Дата',
@@ -595,70 +388,108 @@ const SHEET_SCHEMAS = {
   },
 
   // ----------------------------------------------------------
-  // АРТИКУЛ_БАРКОДЫ — связка артикулов с баркодами (из Content API sizes)
+  // ОСТАТКИ_ВБ — расчётный лист (поставки − продажи)
   // ----------------------------------------------------------
-  [APP.sheets.ARTICLE_BARCODES]: {
-    keys: ['cabinet', 'nmID', 'vendorCode', 'techSize', 'wbSize', 'barcode', 'chrtID', 'price', 'discountedPrice'],
+  [APP.sheets.STOCKS_CALC]: {
+    keys: ['cabinet','nmID','vendorCode','barcode','techSize','brand','subject',
+           'suppliedQty','soldQty','returnedQty','stockQty'],
     titles: {
-      cabinet:         'Кабинет',
-      nmID:            'Артикул WB',
-      vendorCode:      'Артикул продавца',
-      techSize:        'Тех. размер',
-      wbSize:          'Размер WB',
-      barcode:         'Баркод',
-      chrtID:          'ID характеристики',
-      price:           'Цена',
-      discountedPrice: 'Цена со скидкой'
+      cabinet:'Кабинет', nmID:'Артикул WB', vendorCode:'Артикул продавца',
+      barcode:'Баркод', techSize:'Тех. размер', brand:'Бренд', subject:'Предмет',
+      suppliedQty:'Поставлено', soldQty:'Продано', returnedQty:'Возвращено', stockQty:'Остаток'
     },
     desc: {
-      nmID:            'Уникальный ID карточки WB',
-      vendorCode:      'Артикул продавца из карточки',
-      techSize:        'Технический размер (размер продавца)',
-      wbSize:          'Размер WB (отображается на сайте)',
-      barcode:         'Баркод (sku) конкретного размера',
-      chrtID:          'ID характеристики (размера) в системе WB',
-      price:           'Розничная цена размера',
-      discountedPrice: 'Цена после скидки'
+      suppliedQty:'Сумма quantity из Поставки_Детализация_ВБ',
+      soldQty:'Кол-во продаж из Продажи_ВБ (saleID начинается с S)',
+      returnedQty:'Кол-во возвратов из Продажи_ВБ (saleID начинается с R)',
+      stockQty:'Расчёт: поставлено − продано + возвращено'
     }
   },
 
   // ----------------------------------------------------------
-  // ОСТАТКИ_БАРКОДЫ — остатки на складах WB с детализацией по баркоду
-  // Источник: statistics /api/v1/supplier/stocks
+  // ТОВАРЫ — ручной ввод, справочник продукции
   // ----------------------------------------------------------
-  [APP.sheets.STOCKS_BY_BARCODE]: {
-    keys: ['cabinet', 'loadedAt', 'nmId', 'vendorCode', 'barcode', 'techSize', 'brand', 'subjectName',
-           'warehouseName', 'quantity', 'inWayToClient', 'inWayFromClient', 'quantityFull',
-           'Price', 'Discount', 'isSupply', 'isRealization', 'SCCode', 'daysOnSite'],
+  [APP.sheets.PRODUCTS]: {
+    keys: ['nmID','vendorCode','productName','category','color','size','ageGroup','notes'],
     titles: {
-      cabinet:         'Кабинет',
-      loadedAt:        'Дата загрузки',
-      nmId:            'Артикул WB',
-      vendorCode:      'Артикул продавца',
-      barcode:         'Баркод',
-      techSize:        'Тех. размер',
-      brand:           'Бренд',
-      subjectName:     'Предмет',
-      warehouseName:   'Склад WB',
-      quantity:        'Остаток (шт.)',
-      inWayToClient:   'В пути к клиенту',
-      inWayFromClient: 'В пути от клиента',
-      quantityFull:    'Полный остаток',
-      Price:           'Цена',
-      Discount:        'Скидка %',
-      isSupply:        'Поставка',
-      isRealization:   'Реализация',
-      SCCode:          'Код поставки',
-      daysOnSite:      'Дней на сайте'
+      nmID:'Артикул WB (nmID)', vendorCode:'Артикул продавца',
+      productName:'Название товара', category:'Категория', color:'Цвет',
+      size:'Размер', ageGroup:'Возрастная группа', notes:'Примечания'
     },
     desc: {
-      barcode:         'Баркод (SKU) конкретного размера товара',
-      quantity:        'Остаток на конкретном складе WB',
-      quantityFull:    'Полный остаток = склад + в пути',
-      Price:           'Розничная цена без скидки',
-      Discount:        'Процент скидки',
-      daysOnSite:      'Количество дней, сколько товар на сайте WB',
-      SCCode:          'Код поставки (SupplyCode / IncomeID)'
+      nmID:'Выпадающий список из Артикулы_ВБ',
+      vendorCode:'Артикул продавца',
+      productName:'Произвольное название товара',
+      ageGroup:'Целевая возрастная группа'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // ПЛАНИРОВАНИЕ — ручной ввод
+  // ----------------------------------------------------------
+  [APP.sheets.PLANNING]: {
+    keys: ['date','nmID','vendorCode','productName','plannedQty','deadline','status','notes'],
+    titles: {
+      date:'Дата', nmID:'Артикул WB', vendorCode:'Артикул продавца',
+      productName:'Название', plannedQty:'План (шт.)',
+      deadline:'Дедлайн', status:'Статус', notes:'Примечания'
+    },
+    desc: {
+      plannedQty:'Запланированное количество к производству',
+      deadline:'Дата, к которой нужно подготовить',
+      status:'Статус планирования (Новый / В работе / Готово)'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // ЗАПУСК_ШВ — ручной ввод, запуск в швейное производство
+  // ----------------------------------------------------------
+  [APP.sheets.SEWING_LAUNCH]: {
+    keys: ['date','nmID','vendorCode','productName','fabric','color','size','launchQty','deadline','status','notes'],
+    titles: {
+      date:'Дата запуска', nmID:'Артикул WB', vendorCode:'Артикул продавца',
+      productName:'Название', fabric:'Ткань', color:'Цвет', size:'Размер',
+      launchQty:'Кол-во (шт.)', deadline:'Дедлайн', status:'Статус', notes:'Примечания'
+    },
+    desc: {
+      launchQty:'Количество единиц, запущенных в пошив',
+      fabric:'Название/артикул ткани',
+      status:'Статус запуска (Запущен / В пошиве / Готово)'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // ВЫПУСК_ШВ — ручной ввод, выход с швейного производства
+  // ----------------------------------------------------------
+  [APP.sheets.SEWING_OUTPUT]: {
+    keys: ['date','nmID','vendorCode','productName','color','size','outputQty','defectQty','acceptedQty','notes'],
+    titles: {
+      date:'Дата выпуска', nmID:'Артикул WB', vendorCode:'Артикул продавца',
+      productName:'Название', color:'Цвет', size:'Размер',
+      outputQty:'Выпущено (шт.)', defectQty:'Брак (шт.)', acceptedQty:'Принято (шт.)', notes:'Примечания'
+    },
+    desc: {
+      outputQty:'Общее количество выпущенных единиц',
+      defectQty:'Количество бракованных единиц',
+      acceptedQty:'Принято без брака'
+    }
+  },
+
+  // ----------------------------------------------------------
+  // ФУЛЛФИЛМЕНТ_И_УПАКОВКА — ручной ввод
+  // ----------------------------------------------------------
+  [APP.sheets.FULFILLMENT]: {
+    keys: ['date','nmID','vendorCode','barcode','productName','size','qty','packagingType','destination','status','notes'],
+    titles: {
+      date:'Дата', nmID:'Артикул WB', vendorCode:'Артикул продавца',
+      barcode:'Баркод', productName:'Название', size:'Размер',
+      qty:'Кол-во (шт.)', packagingType:'Тип упаковки',
+      destination:'Склад назначения', status:'Статус', notes:'Примечания'
+    },
+    desc: {
+      packagingType:'Тип упаковки (пакет / короб / паллет)',
+      destination:'Название склада WB для отправки',
+      status:'Статус (Упаковано / Отправлено / Принято WB)'
     }
   },
 

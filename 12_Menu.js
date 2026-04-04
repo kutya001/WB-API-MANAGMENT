@@ -45,26 +45,22 @@ function onOpen() {
     .addItem('🌐 WB Менеджер (полный интерфейс)', 'showWbManager')
     .addSeparator()
 
-    // --- Товары ---
+    // --- Артикулы ---
     .addSubMenu(
-      ui.createMenu('📦 Товары')
-        .addItem('🔄 Все товары',          'loadAllGoods')
+      ui.createMenu('📦 Артикулы')
+        .addItem('🔄 Все артикулы',        'loadAllGoods')
         .addSeparator()
-        .addItem('📋 Артикулы',            'loadArticles')
+        .addItem('📋 Артикулы (каталог)',   'loadArticles')
         .addItem('🔗 Артикул-Баркоды',     'loadArticleBarcodes')
-        .addItem('📊 Остатки WB',           'loadStocksWb')
-        .addItem('📊 Остатки по баркодам',  'loadStocksByBarcode')
     )
 
     // --- Поставки FBW ---
     .addSubMenu(
       ui.createMenu('🚚 Поставки FBW')
-        .addItem('📦 Все поставки',       'loadAllSupplies')
+        .addItem('📦 Все поставки',         'loadAllSupplies')
         .addSeparator()
-        .addItem('📦 Список поставок',    'loadSupplies')
-        .addItem('📋 Детали поставок',    'loadSupplyDetails')
-        .addItem('🧴 Товары поставок',    'loadSupplyGoods')
-        .addItem('📦 Упаковка поставок',  'loadSupplyPackages')
+        .addItem('📦 Список поставок',      'loadSupplies')
+        .addItem('📋 Детализация поставок', 'loadSupplyDetails')
     )
 
     // --- Заказы и продажи ---
@@ -76,27 +72,11 @@ function onOpen() {
         .addItem('💰 Продажи',  'loadSales')
     )
 
-    // --- Финансы ---
-    .addSubMenu(
-      ui.createMenu('💳 Финансы')
-        .addItem('💳 Все финансы',          'loadAllFinance')
-        .addSeparator()
-        .addItem('💳 Баланс продавца',      'loadBalance')
-        .addItem('💰 Бюджеты кампаний',     'loadCampaignBudgets')
-        .addItem('📊 История затрат',        'loadCostHistory')
-        .addSeparator()
-        .addItem('🧾 Финансовый отчёт',     'loadFinance')
-    )
+    // --- Реклама ---
+    .addItem('📣 Рекламные расходы', 'loadAdExpenses')
 
-    // --- Управленческие отчёты ---
-    .addSeparator()
-    .addSubMenu(
-      ui.createMenu('📈 Отчёты')
-        .addItem('📈 Все отчёты',            'loadAllReports')
-        .addSeparator()
-        .addItem('📉 Расходы (из Финансов)', 'buildExpensesFromFinance')
-        .addItem('📘 ДДР (Доходы-Расходы)',  'buildDDR')
-    )
+    // --- Расчёты ---
+    .addItem('📊 Рассчитать остатки', 'buildStocksCalc')
 
     // --- Общие действия ---
     .addSeparator()
@@ -241,20 +221,19 @@ function goToSheetByName(sheetName) {
  * Запускает произвольную функцию-загрузчик из Sidebar.
  * Вызывается из JS sidebar через google.script.run.
  *
- * @param {string} funcName - Имя функции ('loadSales', 'buildDDR' и т.д.)
+ * @param {string} funcName - Имя функции ('loadSales', 'loadAdExpenses' и т.д.)
  * @returns {{ ok: boolean, message: string }}
  */
 function runFromSidebar(funcName) {
   // Белый список допустимых функций (защита от инъекций)
   const allowed = [
-    'loadArticles', 'loadArticleBarcodes', 'loadStocksWb', 'loadStocksByBarcode',
+    'loadArticles', 'loadArticleBarcodes',
     'loadOrders', 'loadSales',
-    'loadFinance', 'loadBalance', 'loadCampaignBudgets', 'loadCostHistory',
-    'loadSupplies', 'loadSupplyDetails', 'loadSupplyGoods', 'loadSupplyPackages',
-    'buildExpensesFromFinance', 'buildDDR',
+    'loadSupplies', 'loadSupplyDetails',
+    'loadAdExpenses', 'buildStocksCalc',
     'initSettingsSheet', 'initMetadataSheet',
     'clearLogs', 'loadAll',
-    'loadAllGoods', 'loadAllOrdersSales', 'loadAllFinance', 'loadAllSupplies', 'loadAllReports'
+    'loadAllGoods', 'loadAllOrdersSales', 'loadAllSupplies'
   ];
 
   if (!allowed.includes(funcName)) {
@@ -417,15 +396,12 @@ function validateApiToken(token) {
  *
  * ПОРЯДОК ВАЖЕН:
  *   1. Артикулы (база для всего)
- *   2. Остатки WB
- *   3. Поставки FBW (нужны supplyID для деталей)
- *   4. Детали / товары / упаковка поставок
- *   5. Заказы
- *   6. Продажи
- *   7. Финансы
- *   8. Баланс
- *   9. Расходы (из финансов)
- *  10. ДДР (из заказов + продаж + финансов + расходов)
+ *   2. Поставки FBW (нужны supplyID для деталей)
+ *   3. Детализация поставок (товары по поставкам)
+ *   4. Заказы
+ *   5. Продажи
+ *   6. Рекламные расходы
+ *   7. Расчёт остатков (из поставок и продаж)
  *
  * ВНИМАНИЕ: Statistics API — 1 запрос/мин.
  * Полный цикл на 3 кабинета ≈ 15-30 минут.
@@ -439,20 +415,12 @@ function loadAll() {
   try {
     loadArticles();
     loadArticleBarcodes();
-    loadStocksWb();
-    loadStocksByBarcode();
     loadSupplies();
     loadSupplyDetails();
-    loadSupplyGoods();
-    loadSupplyPackages();
     loadOrders();
     loadSales();
-    loadFinance();
-    loadBalance();
-    loadCampaignBudgets();
-    loadCostHistory();
-    buildExpensesFromFinance();
-    buildDDR();
+    loadAdExpenses();
+    buildStocksCalc();
 
     const durSec = Math.round((new Date() - startedAt) / 1000);
     writeLog({

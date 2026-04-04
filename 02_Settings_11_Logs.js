@@ -192,44 +192,28 @@ function writeLog(params) {
     const FUNC_NAMES = {
       loadArticles:           'Арт. каталог',
       loadArticleBarcodes:    'Арт. баркоды',
-      loadStocksWb:           'Остатки WB',
-      loadStocksByBarcode:    'Остатки по баркод.',
       loadOrders:             'Заказы',
       loadSales:              'Продажи',
-      loadFinance:            'Финансы',
-      loadBalance:            'Баланс',
-      loadCampaignBudgets:   'Бюджеты кампаний',
-      loadCostHistory:       'История затрат',
       loadSupplies:           'Поставки',
-      loadSupplyDetails:      'Детали поставок',
-      loadSupplyGoods:        'Товары поставок',
-      loadSupplyPackages:     'Упаковка поставок',
-      buildExpensesFromFinance:'Расходы',
-      buildDDR:               'ДДР',
+      loadSupplyDetails:      'Детализация поставок',
+      loadAdExpenses:         'Реклам. расходы',
+      buildStocksCalc:        'Расчёт остатков',
       loadAll:                'Полное обновление',
       loadAllGoods:           'Все товары',
       loadAllOrdersSales:     'Заказы+Продажи',
-      loadAllFinance:         'Все финансы',
-      loadAllSupplies:        'Все поставки',
-      loadAllReports:         'Все отчёты'
+      loadAllSupplies:        'Все поставки'
     };
 
     // Словарь целевых листов
     const FUNC_SHEETS = {
       loadArticles:           APP.sheets.ARTICLES,
       loadArticleBarcodes:    APP.sheets.ARTICLE_BARCODES,
-      loadStocksWb:           APP.sheets.STOCKS_WB,
-      loadStocksByBarcode:    APP.sheets.STOCKS_BY_BARCODE,
       loadOrders:             APP.sheets.ORDERS,
       loadSales:              APP.sheets.SALES,
-      loadFinance:            APP.sheets.FINANCE,
-      loadBalance:            APP.sheets.BALANCE,      loadCampaignBudgets:  APP.sheets.CAMPAIGN_BUDGET,
-      loadCostHistory:      APP.sheets.COST_HISTORY,      loadSupplies:           APP.sheets.SUPPLIES,
+      loadSupplies:           APP.sheets.SUPPLIES,
       loadSupplyDetails:      APP.sheets.SUPPLY_DETAILS,
-      loadSupplyGoods:        APP.sheets.SUPPLY_GOODS,
-      loadSupplyPackages:     APP.sheets.SUPPLY_PACKAGES,
-      buildExpensesFromFinance:APP.sheets.EXPENSES,
-      buildDDR:               APP.sheets.DDR
+      loadAdExpenses:         APP.sheets.AD_EXPENSES,
+      buildStocksCalc:        APP.sheets.STOCKS_CALC
     };
 
     const funcName = params.functionName || '';

@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * DEV_GUIDE.md — Инструкция разработчика WB Учёт v2.0
+ * DEV_GUIDE.md — Инструкция разработчика WB Учёт v3.0
  * ============================================================
  * Этот файл хранится как комментарий в GAS для удобства.
  * Скопируй содержимое в README.md своего проекта.
@@ -12,132 +12,95 @@
  *
  * Файлы GAS (Google Apps Script):
  *
- * | Файл                        | Назначение                              |
- * |-----------------------------|-----------------------------------------|
- * | 00_Config.gs                | Конфигурация: API, схемы, константы     |
- * | 01_Utils.gs                 | Утилиты: wbRequest, даты, запись листов |
- * | 02_Settings_11_Logs.gs      | Настройки и логирование                 |
- * | 03_06_Articles_...          | Артикулы, остатки, заказы, продажи      |
- * | 07_08_Finance_Supplies.gs   | Финансы, баланс, поставки FBW           |
- * | 09_Reports.gs               | ДДР, расходы                            |
- * | 12_Menu.gs                  | Меню, Sidebar, loadAll                  |
- * | Sidebar.html                | HTML-интерфейс боковой панели           |
+ * | Файл                              | Назначение                                  |
+ * |-----------------------------------|---------------------------------------------|
+ * | 00_Config.gs                      | Конфигурация: API, схемы, константы         |
+ * | 01_Utils.gs                       | Утилиты: wbRequest, даты, запись листов     |
+ * | 02_Settings_11_Logs.gs            | Настройки и логирование                     |
+ * | 03_06_Articles_Stocks_Orders_Sales| Артикулы, заказы, продажи                   |
+ * | 07_08_Supplies_Ads.gs             | Поставки FBW, рекламные расходы             |
+ * | 09_Reports.gs                     | Расчёт остатков (buildStocksCalc)           |
+ * | 12_Menu.gs                        | Меню, Sidebar, loadAll                      |
+ * | Sidebar.html                      | HTML-интерфейс боковой панели               |
+ * | WB_manager.html                   | Полный веб-интерфейс (модальное окно)       |
  *
  * ---
  *
- * ## Как добавить новый модуль (пример: Реклама)
+ * ## Листы (17 штук)
  *
- * ### Шаг 1 — Добавь новый домен (если нужен новый хост)
+ * ### Системные (4):
+ * - API — кабинеты и токены
+ * - НАСТРОЙКИ — параметры загрузки
+ * - МЕТАДАННЫЕ — справочник полей всех листов
+ * - ЛОГИ — история выполнения функций
  *
- * В 00_Config.gs, секция WB_API:
- * ```js
- * adv: {
- *   baseUrl: 'https://advert-api.wildberries.ru',
- *   tokenCategory: 'Реклама',
- *   rateLimit: { requests: 60, windowMs: 60000, sleepMs: 1100 }
- * }
- * ```
+ * ### API-загружаемые (7):
+ * - Артикулы_ВБ — карточки товаров (Content API)
+ * - Артикулы_Баркоды — связка артикулов с баркодами (Content API)
+ * - Поставки_ВБ — список поставок FBW (Supplies API)
+ * - Поставки_Детализация_ВБ — товары каждой поставки (Supplies API /goods)
+ * - Заказы_ВБ — заказы (Statistics API)
+ * - Продажи_ВБ — продажи с полем isReturn (Statistics API)
+ * - Рекламные_расходы — затраты по рекламным кампаниям (Promotion API)
  *
+ * ### Расчётные (1):
+ * - Остатки_ВБ — stockQty = suppliedQty − soldQty + returnedQty
+ *
+ * ### Ручного ввода (5):
+ * - Товары — справочник продукции
+ * - Планирование — план производства
+ * - Запуск_ШВ — запуск в швейное производство
+ * - Выпуск_ШВ — выпуск готовой продукции
+ * - Фуллфилмент_и_упаковка — учёт фуллфилмента
+ *
+ * ---
+ *
+ * ## Функции загрузки
+ *
+ * | Функция              | Лист                     | API                          |
+ * |----------------------|--------------------------|------------------------------|
+ * | loadArticles()       | Артикулы_ВБ              | Content POST /cards/list     |
+ * | loadArticleBarcodes()| Артикулы_Баркоды         | Content POST /cards/list     |
+ * | loadSupplies()       | Поставки_ВБ              | Supplies POST /supplies      |
+ * | loadSupplyDetails()  | Поставки_Детализация_ВБ  | Supplies GET /supplies/{}/goods |
+ * | loadOrders()         | Заказы_ВБ                | Statistics GET /orders       |
+ * | loadSales()          | Продажи_ВБ               | Statistics GET /sales        |
+ * | loadAdExpenses()     | Рекламные_расходы        | Promotion POST /fullstats    |
+ * | buildStocksCalc()    | Остатки_ВБ               | — (расчёт из листов)        |
+ *
+ * ### Групповые:
+ * - loadAllGoods() — loadArticles + loadArticleBarcodes
+ * - loadAllOrdersSales() — loadOrders + loadSales
+ * - loadAllSupplies() — loadSupplies + loadSupplyDetails
+ * - loadAll() — полный цикл всех загрузок + buildStocksCalc
+ *
+ * ---
+ *
+ * ## Как добавить новый модуль
+ *
+ * ### Шаг 1 — Добавь домен в WB_API (00_Config.gs) если новый хост
  * ### Шаг 2 — Добавь имя листа в APP.sheets
- * ```js
- * ADVERTISING: 'РЕКЛАМА'
- * ```
- *
- * ### Шаг 3 — Добавь схему листа в SHEET_SCHEMAS
- * ```js
- * [APP.sheets.ADVERTISING]: {
- *   keys:   ['cabinet', 'advertId', 'name', 'status', 'type', 'budget', 'createTime'],
- *   titles: {
- *     cabinet:    'Кабинет',
- *     advertId:   'ID кампании',
- *     name:       'Название',
- *     status:     'Статус',
- *     type:       'Тип',
- *     budget:     'Бюджет',
- *     createTime: 'Дата создания'
- *   },
- *   desc: {
- *     advertId: 'Уникальный ID рекламной кампании WB',
- *     status:   '7=Кампания завершена, 9=Идут показы, 11=Приостановлена'
- *   }
- * }
- * ```
- *
+ * ### Шаг 3 — Добавь схему в SHEET_SCHEMAS
  * ### Шаг 4 — Добавь настройки в DEFAULT_SETTINGS (если нужны)
- * ```js
- * { key: 'ADV_DATE_FROM', value: '2026-04-01', group: 'Реклама', description: 'Реклама: дата с' }
- * ```
- *
- * ### Шаг 5 — Создай файл загрузчика 13_Advertising.gs
- * ```js
- * function loadAdvertising() {
- *   const apiKeys = getApiKeys();
- *   const rows    = [];
- *
- *   apiKeys.forEach(item => {
- *     let resp;
- *     try {
- *       resp = wbRequest('adv', '/adv/v1/promotion/adverts', 'GET', null, item.apiKey);
- *     } catch (e) {
- *       Logger.log(`[loadAdvertising] Кабинет "${item.cabinet}": ${e.message}`);
- *       return;
- *     }
- *
- *     if (!resp || !Array.isArray(resp)) return;
- *
- *     resp.forEach(adv => {
- *       rows.push({
- *         cabinet:    item.cabinet,
- *         advertId:   adv.advertId   || '',
- *         name:       adv.name       || '',
- *         status:     adv.status     || '',
- *         type:       adv.type       || '',
- *         budget:     adv.budget     || 0,
- *         createTime: formatDateRu(adv.createTime)
- *       });
- *     });
- *
- *     markApiUsed(item.row);
- *     Utilities.sleep(WB_API.adv.rateLimit.sleepMs);
- *   });
- *
- *   const count = writeObjectsToSheet(APP.sheets.ADVERTISING, rows);
- *   SpreadsheetApp.getActive().toast(`Реклама: ${count} кампаний`, '📣 Реклама', 3);
- *   return count;
- * }
- * ```
- *
- * ### Шаг 6 — Добавь в меню (12_Menu.gs)
- * ```js
- * .addItem('📣 Загрузить рекламу', 'loadAdvertising')
- * ```
- *
+ * ### Шаг 5 — Создай функцию загрузки (используй wbRequest + writeObjectsToSheet)
+ * ### Шаг 6 — Добавь в меню onOpen() (12_Menu.gs)
  * ### Шаг 7 — Добавь в whitelist runFromSidebar (12_Menu.gs)
- * ```js
- * const allowed = [..., 'loadAdvertising'];
- * ```
- *
  * ### Шаг 8 — Добавь кнопку в Sidebar.html
- * ```html
- * <button class="btn btn-secondary" onclick="run('loadAdvertising')">
- *   <span class="icon">📣</span> Реклама
- * </button>
- * ```
+ * ### Шаг 9 — Обнови FUNC_NAMES/FUNC_SHEETS в writeLog (02_Settings_11_Logs.gs)
  *
  * ---
  *
  * ## Работа с датами
  *
- * | Задача                          | Функция                     |
- * |---------------------------------|-----------------------------|
- * | Отформатировать в СНГ дд.мм.гггг чч:мм:сс | `formatDateRu(value)` |
- * | Только дата дд.мм.гггг          | `formatDateOnlyRu(value)`   |
- * | Дата для API WB (YYYY-MM-DD)    | `parseDateToIso(value)`     |
- * | Текущее время в СНГ формате     | `nowRu()`                   |
- * | Период ГГГГ-ММ для ДДР          | `toYearMonth(value)`        |
+ * | Задача                                    | Функция                    |
+ * |-------------------------------------------|----------------------------|
+ * | Отформатировать в СНГ дд.мм.гггг чч:мм:сс | `formatDateRu(value)`     |
+ * | Только дата дд.мм.гггг                     | `formatDateOnlyRu(value)` |
+ * | Дата для API WB (YYYY-MM-DD)               | `parseDateToIso(value)`   |
+ * | Период ГГГГ-ММ                             | `toYearMonth(value)`      |
  *
- * **ПРАВИЛО**: Все даты записываются в листы через `formatDateRu()`.
- * Все даты отправляемые в API WB — через `parseDateToIso()`.
+ * **ПРАВИЛО**: Все даты в листах через `formatDateRu()`.
+ * Все даты для API WB — через `parseDateToIso()`.
  *
  * ---
  *
@@ -157,7 +120,7 @@
  * }, apiKey);
  * ```
  *
- * Паузы между запросами берём из `WB_API[apiType].rateLimit.sleepMs`.
+ * Паузы между запросами: `WB_API[apiType].rateLimit.sleepMs`.
  *
  * ---
  *
@@ -170,35 +133,29 @@
  *
  * ## Логирование
  *
- * Простое логирование:
- * ```js
- * writeLog({ startedAt: new Date(), finishedAt: new Date(), functionName: 'myFunc',
- *            status: 'OK', rowsLoaded: 100 });
- * ```
- *
  * Через декоратор (рекомендуется):
  * ```js
  * const result = withLog('myFunc', 'Кабинет 1', () => {
  *   // ... логика ...
- *   return rowsCount;  // число строк
+ *   return rowsCount;
  * });
+ * ```
+ *
+ * Или напрямую:
+ * ```js
+ * writeLog({ startedAt, finishedAt: new Date(), functionName: 'myFunc',
+ *            status: 'OK', rowsLoaded: 100 });
  * ```
  *
  * ---
  *
  * ## Адаптация к изменениям WB API
  *
- * WB периодически меняет API без предупреждения. Чек-лист при ошибке:
- *
- * 1. Проверь https://dev.wildberries.ru/release-notes — были ли изменения
- * 2. Проверь https://dev.wildberries.ru/wb-status — доступен ли API сейчас
- * 3. Проверь токен в листе API — актуальна ли категория
- * 4. Обнови базовый URL в WB_API если домен изменился
- * 5. Обнови endpoint в вызове функции
- * 6. Обнови маппинг полей в функции загрузки (ключи ответа могут измениться)
- * 7. При необходимости — обнови схему в SHEET_SCHEMAS
- *
- * Подпишись на Telegram: https://t.me/wb_api_notifications
+ * 1. Проверь https://dev.wildberries.ru/release-notes
+ * 2. Проверь https://dev.wildberries.ru/wb-status
+ * 3. Проверь токен — актуальна ли категория
+ * 4. Обнови URL/endpoint/маппинг полей при необходимости
+ * 5. Обнови SHEET_SCHEMAS если поля изменились
  *
  * ---
  *
@@ -210,15 +167,13 @@
  * | Размер spreadsheet         | 10 млн ячеек   |
  * | UrlFetchApp запросов/день  | 20 000         |
  * | PropertiesService          | 9 КБ на ключ   |
- * | CacheService               | 100 КБ на ключ |
  *
- * При данных > 50 000 строк — используй MAX_PAGES_PER_RUN = 2-3
+ * При больших данных используй MAX_PAGES_PER_RUN = 2-3
  * и запускай загрузку по частям (отдельные кнопки, не loadAll).
  *
- * Для автозапуска — настрой Time-based trigger в меню GAS:
- * Triggers → Add trigger → loadAll (или отдельные функции) → Time-driven
+ * Для автозапуска: Triggers → Add trigger → Time-driven
  */
 
 // Этот файл является документацией. Он не содержит исполняемого кода.
 // eslint-disable-next-line no-unused-vars
-const _DEV_GUIDE_VERSION = '2.0.0';
+const _DEV_GUIDE_VERSION = '3.0.0';

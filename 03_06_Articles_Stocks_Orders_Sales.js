@@ -1,10 +1,13 @@
 /**
  * ============================================================
- * 03_Articles.gs — Загрузка карточек товаров (Content API)
+ * 03_06_Articles_Orders_Sales.gs — Артикулы, Заказы, Продажи
  * ============================================================
- * API: https://content-api.wildberries.ru/content/v2/get/cards/list
- * Лимит: ~100 запросов/мин, пауза 700 мс
- * Токен: категория "Контент"
+ * Содержит:
+ *  - loadArticles()            — Content API карточки товаров
+ *  - loadArticleBarcodes()     — Content API баркоды
+ *  - loadOrders()              — Statistics API заказы
+ *  - loadSales()               — Statistics API продажи+возвраты
+ *  - _loadStatisticsByLastChangeDate() — универсальный загрузчик
  * ============================================================
  */
 
@@ -186,154 +189,6 @@ function loadArticleBarcodes() {
 }
 
 // ============================================================
-// 04_Stocks.gs — Остатки на складах WB
-// ============================================================
-/**
- * API: Statistics /api/v1/supplier/stocks
- * Лимит: 1 запрос/мин (statistics API)
- * Токен: категория "Статистика"
- *
- * Возвращает остатки по каждому nmId и складу WB.
- * Обновляется ежедневно (данные на начало дня).
- */
-
-/**
- * Загружает остатки на складах WB (FBW).
- * Записывает в лист ОСТАТКИ_WB.
- */
-function loadStocksWb() {
-  const startedAt = new Date();
-  const apiKeys  = getApiKeys();
-  const loadedAt = formatDateRu(new Date());
-  const rows     = [];
-
-  // dateFrom = вчера (нужен для получения актуальных остатков)
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const dateFrom  = parseDateToIso(yesterday);
-
-  apiKeys.forEach(item => {
-    let resp;
-    try {
-      resp = wbRequest(
-        'statistics',
-        '/api/v1/supplier/stocks',
-        'GET', null, item.apiKey,
-        { dateFrom }
-      );
-    } catch (e) {
-      Logger.log(`[loadStocksWb] Кабинет "${item.cabinet}": ${e.message}`);
-      return;
-    }
-
-    if (!resp || !Array.isArray(resp)) return;
-
-    resp.forEach(s => {
-      rows.push({
-        cabinet:         item.cabinet,
-        loadedAt:        loadedAt,
-        nmId:            s.nmId            || '',
-        vendorCode:      s.supplierArticle || '',
-        brand:           s.brand           || '',
-        subjectName:     s.subject         || '',
-        warehouseName:   s.warehouseName   || '',
-        quantity:        s.quantity        || 0,
-        inWayToClient:   s.inWayToClient   || 0,
-        inWayFromClient: s.inWayFromClient || 0,
-        quantityFull:    s.quantityFull    || 0
-      });
-    });
-
-    markApiUsed(item.row);
-    Utilities.sleep(WB_API.statistics.rateLimit.sleepMs);
-  });
-
-  const count = writeObjectsToSheet(APP.sheets.STOCKS_WB, rows);
-  writeLog({
-    startedAt,
-    finishedAt:   new Date(),
-    functionName: 'loadStocksWb',
-    status:       'OK',
-    cabinet:      'ВСЕ',
-    rowsLoaded:   count
-  });
-  SpreadsheetApp.getActive().toast(`Остатки WB: ${count} строк`, '📦 Остатки WB', 3);
-  return count;
-}
-
-/**
- * Загружает остатки с детализацией по баркоду.
- * Включает все поля: баркод, тех. размер, цена, скидка, дни на сайте.
- * Записывает в лист ОСТАТКИ_БАРКОДЫ.
- */
-function loadStocksByBarcode() {
-  const startedAt = new Date();
-  const apiKeys  = getApiKeys();
-  const loadedAt = formatDateRu(new Date());
-  const rows     = [];
-
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const dateFrom  = parseDateToIso(yesterday);
-
-  apiKeys.forEach(item => {
-    let resp;
-    try {
-      resp = wbRequest(
-        'statistics',
-        '/api/v1/supplier/stocks',
-        'GET', null, item.apiKey,
-        { dateFrom }
-      );
-    } catch (e) {
-      Logger.log(`[loadStocksByBarcode] Кабинет "${item.cabinet}": ${e.message}`);
-      return;
-    }
-
-    if (!resp || !Array.isArray(resp)) return;
-
-    resp.forEach(s => {
-      rows.push({
-        cabinet:         item.cabinet,
-        loadedAt:        loadedAt,
-        nmId:            s.nmId            || '',
-        vendorCode:      s.supplierArticle || '',
-        barcode:         s.barcode         || '',
-        techSize:        s.techSize        || '',
-        brand:           s.brand           || '',
-        subjectName:     s.subject         || '',
-        warehouseName:   s.warehouseName   || '',
-        quantity:        s.quantity        || 0,
-        inWayToClient:   s.inWayToClient   || 0,
-        inWayFromClient: s.inWayFromClient || 0,
-        quantityFull:    s.quantityFull    || 0,
-        Price:           s.Price           || 0,
-        Discount:        s.Discount        || 0,
-        isSupply:        s.isSupply ? 'Да' : 'Нет',
-        isRealization:   s.isRealization ? 'Да' : 'Нет',
-        SCCode:          s.SCCode          || '',
-        daysOnSite:      s.daysOnSite      || 0
-      });
-    });
-
-    markApiUsed(item.row);
-    Utilities.sleep(WB_API.statistics.rateLimit.sleepMs);
-  });
-
-  const count = writeObjectsToSheet(APP.sheets.STOCKS_BY_BARCODE, rows);
-  writeLog({
-    startedAt,
-    finishedAt:   new Date(),
-    functionName: 'loadStocksByBarcode',
-    status:       'OK',
-    cabinet:      'ВСЕ',
-    rowsLoaded:   count
-  });
-  SpreadsheetApp.getActive().toast(`Остатки по баркодам: ${count} строк`, '📊 Остатки по баркодам', 3);
-  return count;
-}
-
-// ============================================================
 // 05_Orders.gs — Заказы
 // ============================================================
 /**
@@ -368,15 +223,28 @@ function loadOrders() {
  */
 
 /**
- * Загружает продажи с указанной даты.
- * Записывает в лист ПРОДАЖИ.
+ * Загружает продажи и возвраты с указанной даты.
+ * Добавляет поле isReturn (Да/Нет) на основе saleID (R = возврат).
+ * Записывает в лист ПРОДАЖИ_ВБ.
  */
 function loadSales() {
   const count = _loadStatisticsByLastChangeDate(
     '/api/v1/supplier/sales',
     APP.sheets.SALES,
     APP.settings.SALES_DATE_FROM,
-    'loadSales'
+    'loadSales',
+    {
+      mapRow: function(cabinet, row) {
+        const mapped = Object.assign({ cabinet: cabinet }, row);
+        ['date', 'lastChangeDate', 'cancelDate', 'order_dt', 'sale_dt'].forEach(function(dateField) {
+          if (mapped[dateField]) mapped[dateField] = formatDateRu(mapped[dateField]);
+        });
+        // Определяем возврат по saleID: R = возврат, S = продажа
+        const saleID = String(mapped.saleID || '');
+        mapped.isReturn = saleID.charAt(0) === 'R' ? 'Да' : 'Нет';
+        return mapped;
+      }
+    }
   );
   SpreadsheetApp.getActive().toast(`Загружено ${count} продаж`, '💰 Продажи', 3);
 }
@@ -398,13 +266,16 @@ function loadSales() {
  * @param {string} sheetName         - Имя листа для записи
  * @param {string} dateFromSettingKey - Ключ в НАСТРОЙКАХ
  * @param {string} logFuncName       - Имя для логов
+ * @param {Object} [opts]            - Дополнительные опции маппинга
+ * @param {Function} [opts.mapRow]   - Кастомный маппинг строки (cabinet, row) => object
  * @returns {number} - Кол-во загруженных строк
  */
-function _loadStatisticsByLastChangeDate(endpoint, sheetName, dateFromSettingKey, logFuncName) {
+function _loadStatisticsByLastChangeDate(endpoint, sheetName, dateFromSettingKey, logFuncName, opts) {
   const startedAt   = new Date();
   const apiKeys     = getApiKeys();
   const settingDate = parseDateToIso(getSetting(dateFromSettingKey, '2026-01-01'), '2026-01-01');
   const maxPages    = Math.min(Number(getSetting(APP.settings.MAX_PAGES_PER_RUN, '5')) || 5, 20);
+  const mapRow      = (opts && opts.mapRow) || null;
 
   // Проверяем сохранённый курсор инкрементального обновления
   const propKey     = 'INC_' + sheetName;
@@ -438,12 +309,16 @@ function _loadStatisticsByLastChangeDate(endpoint, sheetName, dateFromSettingKey
       if (!resp || !Array.isArray(resp) || resp.length === 0) break;
 
       resp.forEach(row => {
-        // Форматируем даты в СНГ формат перед записью
-        const mapped = Object.assign({ cabinet: item.cabinet }, row);
-        ['date', 'lastChangeDate', 'cancelDate', 'order_dt', 'sale_dt'].forEach(dateField => {
-          if (mapped[dateField]) mapped[dateField] = formatDateRu(mapped[dateField]);
-        });
-        rows.push(mapped);
+        if (mapRow) {
+          rows.push(mapRow(item.cabinet, row));
+        } else {
+          // Форматируем даты в СНГ формат перед записью
+          const mapped = Object.assign({ cabinet: item.cabinet }, row);
+          ['date', 'lastChangeDate', 'cancelDate', 'order_dt', 'sale_dt'].forEach(dateField => {
+            if (mapped[dateField]) mapped[dateField] = formatDateRu(mapped[dateField]);
+          });
+          rows.push(mapped);
+        }
       });
 
       // Следующий cursor = lastChangeDate последней строки
@@ -491,13 +366,11 @@ function _loadStatisticsByLastChangeDate(endpoint, sheetName, dateFromSettingKey
 // ГРУППОВЫЕ ОБНОВЛЕНИЯ
 // ============================================================
 
-/** Обновить все данные Товаров: артикулы + баркоды + остатки */
+/** Обновить артикулы и баркоды */
 function loadAllGoods() {
   loadArticles();
   loadArticleBarcodes();
-  loadStocksWb();
-  loadStocksByBarcode();
-  SpreadsheetApp.getActive().toast('Товары обновлены полностью', '📦 Товары', 3);
+  SpreadsheetApp.getActive().toast('Артикулы и баркоды обновлены', '📦 Товары', 3);
 }
 
 /** Обновить Заказы + Продажи */

@@ -1,437 +1,89 @@
-/**
+﻿/**
  * ============================================================
- * 07_Finance.gs — Финансовый отчёт по реализации
+ * 07_08_Supplies_Ads.gs — Поставки FBW и Рекламные расходы
  * ============================================================
- * API: Statistics /api/v5/supplier/reportDetailByPeriod
- * Пагинация: по rrd_id (уникальный ID строки отчёта)
- * Лимит: 1 запрос/мин
- * Токен: категория "Статистика"
- *
- * ВАЖНО: Данные доступны с 29.01.2024.
- * При rrd_id=0 загружается с начала периода.
- * Пагинация: последнее rrd_id из ответа → следующий запрос.
- * Конец данных: ответ 204 или пустой массив.
- *
- * Документация: https://dev.wildberries.ru/docs/openapi/financial-reports-and-accounting
+ * Содержит:
+ *  - loadSupplies()       — Supplies API список поставок
+ *  - _getSupplyTasks()    — хелпер: чтение поставок для доп. запросов
+ *  - loadSupplyDetails()  — Supplies API товары поставки (по артикулам и баркодам)
+ *  - loadAdExpenses()     — Promotion API история затрат на рекламу
  * ============================================================
  */
 
-/**
- * Загружает финансовый отчёт по реализации.
- * Записывает в лист ФИНАНСЫ.
- */
-function loadFinance() {
-  const startedAt = new Date();
-  const dateFrom = parseDateToIso(getSetting(APP.settings.FINANCE_DATE_FROM, '2026-04-01'), '2026-04-01');
-  const dateTo   = parseDateToIso(getSetting(APP.settings.FINANCE_DATE_TO,   '2026-04-30'), '2026-04-30');
-  const period   = getSetting(APP.settings.FINANCE_PERIOD, 'weekly');  // 'weekly' | 'daily'
-  const maxPages = Math.min(Number(getSetting(APP.settings.MAX_PAGES_PER_RUN, '5')) || 5, 30);
-
-  const apiKeys = getApiKeys();
-  const rows    = [];
-
-  apiKeys.forEach(item => {
-    let rrdid = 0;  // Начинаем с 0
-    let page  = 0;
-
-    while (page < maxPages) {
-      let resp;
-      try {
-        resp = wbRequest(
-          'statistics',
-          '/api/v5/supplier/reportDetailByPeriod',
-          'GET', null, item.apiKey,
-          {
-            dateFrom, dateTo,
-            limit:  100000,
-            rrdid,
-            period
-          }
-        );
-      } catch (e) {
-        Logger.log(`[loadFinance] Кабинет "${item.cabinet}" rrdid=${rrdid}: ${e.message}`);
-        break;
-      }
-
-      // 204 или пустой массив = данные закончились
-      if (!resp || !Array.isArray(resp) || resp.length === 0) break;
-
-      resp.forEach(row => {
-        const mapped = Object.assign({ cabinet: item.cabinet }, row);
-        // Форматируем все даты в СНГ формат
-        ['date_from', 'date_to', 'create_dt', 'order_dt', 'sale_dt', 'rr_dt'].forEach(dateField => {
-          if (mapped[dateField]) mapped[dateField] = formatDateRu(mapped[dateField]);
-        });
-        rows.push(mapped);
-      });
-
-      // Следующий rrd_id из последней строки
-      const lastRow = resp[resp.length - 1];
-      rrdid = lastRow.rrd_id || rrdid;
-      page++;
-
-      if (page < maxPages) {
-        Utilities.sleep(WB_API.statistics.rateLimit.sleepMs);
-      }
-    }
-
-    markApiUsed(item.row);
-  });
-
-  const count = writeObjectsToSheet(APP.sheets.FINANCE, rows);
-
-  writeLog({
-    startedAt,
-    finishedAt:   new Date(),
-    functionName: 'loadFinance',
-    status:       'OK',
-    cabinet:      'ВСЕ',
-    rowsLoaded:   count
-  });
-
-  SpreadsheetApp.getActive().toast(`Загружено ${count} строк финансов`, '🧾 Финансы', 3);
-  return count;
-}
-
 // ============================================================
-// БАЛАНС ПРОДАВЦА
+// ПОСТАВКИ FBW — Supplies API
 // ============================================================
-/**
- * API: Finance /api/v1/account/balance
- * Лимит: 1 запрос/мин
- * Токен: категория "Финансы"
- *
- * ВАЖНО: Используй отдельный токен категории "Финансы" для баланса!
- * Токен статистики не подходит для этого метода.
- *
- * Документация: https://dev.wildberries.ru/docs/openapi/financial-reports-and-accounting
- */
-
-/**
- * Загружает текущий баланс продавца.
- * Записывает в лист БАЛАНС.
- */
-function loadBalance() {
-  const startedAt = new Date();
-  const apiKeys  = getApiKeys();
-  const loadedAt = formatDateRu(new Date());
-  const rows     = [];
-
-  apiKeys.forEach(item => {
-    let resp;
-    try {
-      resp = wbRequest(
-        'finance',
-        '/api/v1/account/balance',
-        'GET', null, item.apiKey
-      );
-    } catch (e) {
-      Logger.log(`[loadBalance] Кабинет "${item.cabinet}": ${e.message}`);
-      return;
-    }
-
-    if (!resp) return;
-
-    rows.push({
-      cabinet:      item.cabinet,
-      loadedAt:     loadedAt,
-      currency:     resp.currency    || 'RUB',
-      current:      resp.current     || 0,
-      for_withdraw: resp.for_withdraw || 0
-    });
-
-    markApiUsed(item.row);
-    Utilities.sleep(65000);  // 1 запрос/мин
-  });
-
-  const count = writeObjectsToSheet(APP.sheets.BALANCE, rows);
-  writeLog({
-    startedAt,
-    finishedAt:   new Date(),
-    functionName: 'loadBalance',
-    status:       'OK',
-    cabinet:      'ВСЕ',
-    rowsLoaded:   count
-  });
-  SpreadsheetApp.getActive().toast(`Баланс загружен: ${count} кабинета(ов)`, '💳 Баланс', 3);
-  return count;
-}
-
-// ============================================================
-// БЮДЖЕТЫ РЕКЛАМНЫХ КАМПАНИЙ
-// ============================================================
-/**
- * API: Promotion GET /adv/v1/promotion/adverts — список кампаний
- *      Promotion GET /adv/v1/budget?id={id} — бюджет кампании
- * Лимит: 10 запросов/мин → sleepMs 6100
- * Токен: категория "Продвижение"
- *
- * Документация: https://dev.wildberries.ru/openapi/promotion
- */
-
-/**
- * Загружает бюджеты рекламных кампаний.
- * Шаг 1: Получает список кампаний.
- * Шаг 2: Для каждой — запрашивает бюджет.
- * Записывает в лист БЮДЖЕТ_КАМПАНИЙ.
- */
-function loadCampaignBudgets() {
-  const startedAt = new Date();
-  const apiKeys  = getApiKeys();
-  const loadedAt = formatDateRu(new Date());
-  const rows     = [];
-
-  apiKeys.forEach(item => {
-    // Шаг 1: получить список кампаний
-    let campaigns;
-    try {
-      campaigns = wbRequest('promotion', '/adv/v1/promotion/adverts', 'GET', null, item.apiKey);
-    } catch (e) {
-      Logger.log(`[loadCampaignBudgets] Кампании "${item.cabinet}": ${e.message}`);
-      return;
-    }
-
-    if (!campaigns || !Array.isArray(campaigns) || !campaigns.length) return;
-
-    // Шаг 2: бюджет каждой кампании
-    campaigns.forEach(camp => {
-      const advertId = camp.advertId || camp.id || 0;
-      if (!advertId) return;
-
-      let budget;
-      try {
-        budget = wbRequest('promotion', '/adv/v1/budget', 'GET', null, item.apiKey, { id: advertId });
-      } catch (e) {
-        Logger.log(`[loadCampaignBudgets] Бюджет ${advertId}: ${e.message}`);
-        return;
-      }
-
-      rows.push({
-        cabinet:       item.cabinet,
-        loadedAt:      loadedAt,
-        advertId:      advertId,
-        advertName:    pickString(camp, ['name', 'advertName', 'title']),
-        type:          camp.type   || '',
-        status:        camp.status || '',
-        dailyBudget:   pickNumber(budget || {}, ['dailyBudget', 'daily_budget']),
-        budget:        pickNumber(budget || {}, ['total', 'budget']),
-        budgetCash:    pickNumber(budget || {}, ['cash']),
-        budgetNetting: pickNumber(budget || {}, ['netting'])
-      });
-
-      Utilities.sleep(WB_API.promotion.rateLimit.sleepMs);
-    });
-
-    markApiUsed(item.row);
-  });
-
-  const count = writeObjectsToSheet(APP.sheets.CAMPAIGN_BUDGET, rows);
-  writeLog({
-    startedAt,
-    finishedAt:   new Date(),
-    functionName: 'loadCampaignBudgets',
-    status:       'OK',
-    cabinet:      'ВСЕ',
-    rowsLoaded:   count
-  });
-  SpreadsheetApp.getActive().toast(`Бюджеты: ${count} кампаний`, '💰 Бюджеты', 3);
-  return count;
-}
-
-// ============================================================
-// ИСТОРИЯ ЗАТРАТ НА РЕКЛАМУ
-// ============================================================
-/**
- * API: Promotion POST /adv/v2/fullstats — полная статистика по кампаниям
- * Лимит: 2 запроса/мин → sleepMs 31000
- * Токен: категория "Продвижение"
- * Тело запроса: массив ID кампаний (макс. 100 за запрос)
- *
- * Документация: https://dev.wildberries.ru/openapi/promotion
- */
-
-/**
- * Загружает историю затрат на рекламу по кампаниям и дням.
- * Шаг 1: Получает список кампаний.
- * Шаг 2: Батчами по 100 запрашивает fullstats.
- * Записывает в лист ИСТОРИЯ_ЗАТРАТ.
- */
-function loadCostHistory() {
-  const startedAt = new Date();
-  const dateFrom  = parseDateToIso(getSetting(APP.settings.PROMO_DATE_FROM, '2026-04-01'), '2026-04-01');
-  const dateTo    = parseDateToIso(getSetting(APP.settings.PROMO_DATE_TO,   '2026-04-30'), '2026-04-30');
-  const apiKeys   = getApiKeys();
-  const rows      = [];
-
-  apiKeys.forEach(item => {
-    // Шаг 1: список кампаний
-    let campaigns;
-    try {
-      campaigns = wbRequest('promotion', '/adv/v1/promotion/adverts', 'GET', null, item.apiKey);
-    } catch (e) {
-      Logger.log(`[loadCostHistory] Кампании "${item.cabinet}": ${e.message}`);
-      return;
-    }
-
-    if (!campaigns || !Array.isArray(campaigns) || !campaigns.length) return;
-
-    // Индекс кампания → данные
-    const campMap = {};
-    campaigns.forEach(c => {
-      const id = c.advertId || c.id || 0;
-      if (id) campMap[id] = c;
-    });
-
-    // Шаг 2: fullstats батчами
-    const campaignIds = Object.keys(campMap).map(Number);
-    const batchSize   = 100;
-
-    for (let i = 0; i < campaignIds.length; i += batchSize) {
-      const batch = campaignIds.slice(i, i + batchSize);
-
-      let stats;
-      try {
-        stats = wbRequest('promotion', '/adv/v2/fullstats', 'POST', batch, item.apiKey, {
-          dateFrom: dateFrom,
-          dateTo:   dateTo
-        });
-      } catch (e) {
-        Logger.log(`[loadCostHistory] Stats batch ${i}: ${e.message}`);
-        continue;
-      }
-
-      if (!stats || !Array.isArray(stats)) continue;
-
-      stats.forEach(campStat => {
-        const advertId = campStat.advertId || campStat.id || 0;
-        const camp     = campMap[advertId] || {};
-        const days     = campStat.days || campStat.dates || campStat.bopiStats || [];
-
-        if (!Array.isArray(days)) return;
-
-        days.forEach(day => {
-          rows.push({
-            cabinet:    item.cabinet,
-            date:       formatDateOnlyRu(day.date),
-            advertId:   advertId,
-            advertName: pickString(camp, ['name', 'advertName', 'title']),
-            type:       camp.type   || '',
-            status:     camp.status || '',
-            views:      pickNumber(day, ['views']),
-            clicks:     pickNumber(day, ['clicks']),
-            ctr:        round2(pickNumber(day, ['ctr'])),
-            cpc:        round2(pickNumber(day, ['cpc'])),
-            sum:        round2(pickNumber(day, ['sum', 'cost', 'spend'])),
-            atbs:       pickNumber(day, ['atbs', 'add_to_cart']),
-            orders:     pickNumber(day, ['orders']),
-            cr:         round2(pickNumber(day, ['cr'])),
-            shks:       pickNumber(day, ['shks', 'pieces']),
-            sum_price:  round2(pickNumber(day, ['sum_price', 'orders_sum']))
-          });
-        });
-      });
-
-      // 2 запроса/мин → 31 сек интервал
-      if (i + batchSize < campaignIds.length) {
-        Utilities.sleep(31000);
-      }
-    }
-
-    markApiUsed(item.row);
-  });
-
-  const count = writeObjectsToSheet(APP.sheets.COST_HISTORY, rows);
-  writeLog({
-    startedAt,
-    finishedAt:   new Date(),
-    functionName: 'loadCostHistory',
-    status:       'OK',
-    cabinet:      'ВСЕ',
-    rowsLoaded:   count
-  });
-  SpreadsheetApp.getActive().toast(`История затрат: ${count} строк`, '📊 Затраты', 3);
-  return count;
-}
-
-// ============================================================
-// 08_Supplies.gs — Поставки FBW
-// ============================================================
-/**
- * API: Supplies /api/v1/supplies
- * Лимит: ~60 запросов/мин
- * Токен: категория "Поставки FBW"
- *
- * Документация: https://dev.wildberries.ru/docs/openapi/orders-fbw
- * Статусы поставки:
- *   1 — Черновик
- *   2 — Подтверждена
- *   3 — Принята на складе WB
- *   4 — Завершена
- *   5 — Отменена
- */
 
 /**
  * Загружает список поставок FBW.
- * Записывает в лист ПОСТАВКИ.
+ * Записывает в лист Поставки_ВБ.
+ *
+ * API: POST /api/v1/supplies
+ * Пагинация: cursor-based (next из ответа)
+ * Лимит: 60 запросов/мин
  */
 function loadSupplies() {
-  const startedAt  = new Date();
-  const dateFrom   = parseDateToIso(getSetting('SUPPLIES_DATE_FROM', '2026-01-01'), '2026-01-01');
-  const dateTo     = parseDateToIso(getSetting('SUPPLIES_DATE_TO',   '2026-04-30'), '2026-04-30');
-  const dateType   = getSetting('SUPPLIES_DATE_TYPE', 'factDate');
-  const limit      = Number(getSetting('SUPPLIES_LIMIT', '1000')) || 1000;
-
-  const statusIdsRaw = getSetting('SUPPLIES_STATUS_IDS', '');
-  const statusIDs    = statusIdsRaw
-    ? statusIdsRaw.split(',').map(x => Number(x.trim())).filter(x => !isNaN(x) && x > 0)
-    : [];
-
+  const startedAt = new Date();
   const apiKeys = getApiKeys();
-  const rows    = [];
+  const rows = [];
+
+  const dateFrom  = parseDateToIso(getSetting(APP.settings.SUPPLIES_DATE_FROM, '2026-03-01'), '2026-03-01');
+  const dateTo    = parseDateToIso(getSetting(APP.settings.SUPPLIES_DATE_TO,   '2026-04-30'), '2026-04-30');
+  const dateType  = getSetting(APP.settings.SUPPLIES_DATE_TYPE, 'factDate');
+  const statusRaw = getSetting(APP.settings.SUPPLIES_STATUS_IDS, '');
+  const statusIDs = statusRaw ? statusRaw.split(',').map(s => Number(s.trim())).filter(Boolean) : [];
+  const limit     = Math.min(Number(getSetting(APP.settings.SUPPLIES_LIMIT, '1000')) || 1000, 1000);
 
   apiKeys.forEach(item => {
-    let offset  = 0;
-    let hasNext = true;
+    let next = 0;
+    let hasMore = true;
 
-    while (hasNext) {
+    while (hasMore) {
       const payload = {
-        dates: [{ from: dateFrom, till: dateTo, type: dateType }]
+        filter: {
+          dateFrom: dateFrom + 'T00:00:00Z',
+          dateTo:   dateTo   + 'T23:59:59Z',
+          dateType: dateType
+        },
+        cursor: { limit, offset: next }
       };
-      if (statusIDs.length) payload.statusIDs = statusIDs;
+      if (statusIDs.length) payload.filter.statusIDs = statusIDs;
 
       let resp;
       try {
-        resp = wbRequest(
-          'supplies',
-          '/api/v1/supplies',
-          'POST', payload, item.apiKey,
-          { limit, offset }
-        );
+        resp = wbRequest('supplies', '/api/v1/supplies', 'POST', payload, item.apiKey);
       } catch (e) {
-        Logger.log(`[loadSupplies] Кабинет "${item.cabinet}" offset=${offset}: ${e.message}`);
+        Logger.log(`[loadSupplies] Кабинет "${item.cabinet}": ${e.message}`);
+        hasMore = false;
         break;
       }
 
-      if (!resp || !Array.isArray(resp) || resp.length === 0) { hasNext = false; break; }
+      if (!resp) { hasMore = false; break; }
 
-      resp.forEach(s => {
+      const supplies = resp.supplies || resp.data || [];
+      if (!supplies.length) { hasMore = false; break; }
+
+      supplies.forEach(s => {
         rows.push({
           cabinet:       item.cabinet,
-          supplyID:      s.supplyID    || '',
-          preorderID:    s.preorderID  || '',
-          createDate:    formatDateRu(s.createDate),
+          supplyID:      pickString(s, ['ID', 'id', 'supplyID', 'supplyId']),
+          preorderID:    pickString(s, ['preorderID', 'preorderId', 'preorder_id']),
+          createDate:    formatDateRu(s.createDate || s.createdAt),
           supplyDate:    formatDateRu(s.supplyDate),
           factDate:      formatDateRu(s.factDate),
-          updatedDate:   formatDateRu(s.updatedDate),
-          statusID:      s.statusID    || '',
-          boxTypeID:     s.boxTypeID   || '',
+          updatedDate:   formatDateRu(s.updatedDate || s.updatedAt),
+          statusID:      pickNumber(s, ['statusID', 'statusId', 'status']),
+          boxTypeID:     pickNumber(s, ['boxTypeID', 'boxTypeId']),
           isBoxOnPallet: s.isBoxOnPallet ? 'Да' : 'Нет'
         });
       });
 
-      if (resp.length < limit) { hasNext = false; break; }
+      // Пагинация
+      const cursor = resp.cursor || {};
+      next = cursor.next || cursor.offset || 0;
+      hasMore = (cursor.hasNext === true) || (supplies.length >= limit);
+      if (!next && supplies.length < limit) hasMore = false;
 
-      offset += limit;
       Utilities.sleep(WB_API.supplies.rateLimit.sleepMs);
     }
 
@@ -447,117 +99,46 @@ function loadSupplies() {
     cabinet:      'ВСЕ',
     rowsLoaded:   count
   });
-  SpreadsheetApp.getActive().toast(`Загружено ${count} поставок`, '📦 Поставки', 3);
+  SpreadsheetApp.getActive().toast(`Поставки: ${count} строк`, '📦 Поставки', 3);
   return count;
 }
 
 /**
- * Читает supplyID + cabinet из листа ПОСТАВКИ и связывает с apiKey.
- * @returns {{ cabinet: string, supplyID: number, apiKey: string, row: number }[]}
+ * Читает лист ПОСТАВКИ_ВБ и возвращает задачи для дозагрузки деталей.
+ * Каждая задача = { cabinet, supplyID, apiKey }.
+ * @returns {{ cabinet: string, supplyID: string, apiKey: string }[]}
  */
 function _getSupplyTasks() {
-  const apiKeys    = getApiKeys();
-  const cabinetMap = {};
-  apiKeys.forEach(item => { cabinetMap[item.cabinet] = item; });
+  const suppliesData = readSheetAsObjects(APP.sheets.SUPPLIES);
+  const apiKeys = getApiKeys();
 
-  const supplyRows = readSheetAsObjects(APP.sheets.SUPPLIES);
+  // Маппинг: кабинет → apiKey
+  const keyMap = {};
+  apiKeys.forEach(k => { keyMap[k.cabinet] = k.apiKey; });
 
-  return supplyRows
-    .map(row => {
-      const supplyID = Number(
-        row['ID поставки'] || row['supplyID'] || 0
-      );
-      const cabinet = String(
-        row['Кабинет'] || row['cabinet'] || ''
-      ).trim();
-
-      if (!supplyID || !cabinet) return null;
-      const cabinetInfo = cabinetMap[cabinet];
-      if (!cabinetInfo) return null;
-
-      return { cabinet, supplyID, apiKey: cabinetInfo.apiKey, row: cabinetInfo.row };
-    })
-    .filter(Boolean);
-}
-
-/**
- * Загружает детали каждой поставки (GET /api/v1/supplies/{ID}).
- * Записывает в лист ПОСТАВКИ_ДЕТАЛИ.
- *
- * API: https://supplies-api.wildberries.ru/api/v1/supplies/{ID}
- * Лимит: 30 запросов/мин, интервал 2 сек
- */
-function loadSupplyDetails() {
-  const startedAt = new Date();
-  const tasks = _getSupplyTasks();
-  const rows  = [];
-
-  tasks.forEach(task => {
-    let resp;
-    try {
-      resp = wbRequest(
-        'supplies',
-        `/api/v1/supplies/${encodeURIComponent(task.supplyID)}`,
-        'GET', null, task.apiKey,
-        { isPreorderID: false }
-      );
-    } catch (e) {
-      Logger.log(`[loadSupplyDetails] supplyID=${task.supplyID}: ${e.message}`);
-      return;
+  const tasks = [];
+  suppliesData.forEach(row => {
+    const cabinet  = String(row['Кабинет'] || row.cabinet || '').trim();
+    const supplyID = String(row['ID поставки'] || row.supplyID || '').trim();
+    const apiKey   = keyMap[cabinet];
+    if (cabinet && supplyID && apiKey) {
+      tasks.push({ cabinet, supplyID, apiKey });
     }
-
-    if (!resp || typeof resp !== 'object') return;
-
-    rows.push({
-      cabinet:                   task.cabinet,
-      supplyID:                  task.supplyID,
-      statusID:                  pickNumber(resp, ['statusID', 'statusId']),
-      boxTypeID:                 pickNumber(resp, ['boxTypeID', 'boxTypeName']),
-      createDate:                formatDateRu(resp.createDate),
-      supplyDate:                formatDateRu(resp.supplyDate),
-      factDate:                  formatDateRu(resp.factDate),
-      updatedDate:               formatDateRu(resp.updatedDate),
-      warehouseName:             pickString(resp, ['warehouseName']),
-      actualWarehouseName:       pickString(resp, ['actualWarehouseName']),
-      acceptanceCost:            pickNumber(resp, ['acceptanceCost']),
-      paidAcceptanceCoefficient: pickNumber(resp, ['paidAcceptanceCoefficient']),
-      quantity:                  pickNumber(resp, ['quantity']),
-      readyForSaleQuantity:      pickNumber(resp, ['readyForSaleQuantity']),
-      acceptedQuantity:          pickNumber(resp, ['acceptedQuantity']),
-      unloadingQuantity:         pickNumber(resp, ['unloadingQuantity']),
-      depersonalizedQuantity:    pickNumber(resp, ['depersonalizedQuantity']),
-      supplierAssignName:        pickString(resp, ['supplierAssignName']),
-      storageCoef:               pickString(resp, ['storageCoef']),
-      deliveryCoef:              pickString(resp, ['deliveryCoef']),
-      isBoxOnPallet:             resp.isBoxOnPallet ? 'Да' : 'Нет'
-    });
-
-    // 30 запросов/мин → интервал 2 сек
-    Utilities.sleep(2100);
   });
 
-  const count = writeObjectsToSheet(APP.sheets.SUPPLY_DETAILS, rows);
-  writeLog({
-    startedAt,
-    finishedAt:   new Date(),
-    functionName: 'loadSupplyDetails',
-    status:       'OK',
-    cabinet:      'ВСЕ',
-    rowsLoaded:   count
-  });
-  SpreadsheetApp.getActive().toast(`Детали поставок: ${count} строк`, '📦 Детали', 3);
-  return count;
+  return tasks;
 }
 
 /**
  * Загружает товары каждой поставки (GET /api/v1/supplies/{ID}/goods).
- * Записывает в лист ПОСТАВКИ_ТОВАРЫ.
+ * Детализация по артикулам и баркодам.
+ * Записывает в лист Поставки_Детализация_ВБ.
  *
  * API: https://supplies-api.wildberries.ru/api/v1/supplies/{ID}/goods
  * Лимит: 30 запросов/мин, интервал 2 сек
  * Пагинация: offset-based (limit + offset)
  */
-function loadSupplyGoods() {
+function loadSupplyDetails() {
   const startedAt = new Date();
   const tasks = _getSupplyTasks();
   const rows  = [];
@@ -577,7 +158,7 @@ function loadSupplyGoods() {
           { limit, offset, isPreorderID: false }
         );
       } catch (e) {
-        Logger.log(`[loadSupplyGoods] supplyID=${task.supplyID} offset=${offset}: ${e.message}`);
+        Logger.log(`[loadSupplyDetails] supplyID=${task.supplyID} offset=${offset}: ${e.message}`);
         hasNext = false;
         break;
       }
@@ -603,111 +184,143 @@ function loadSupplyGoods() {
         });
       });
 
-      // Если вернулось меньше limit — данные закончились
       if (resp.length < limit) { hasNext = false; break; }
-
       offset += limit;
-      // 30 запросов/мин → интервал 2 сек
       Utilities.sleep(2100);
     }
 
-    // Пауза между поставками
     Utilities.sleep(2100);
   });
 
-  const count = writeObjectsToSheet(APP.sheets.SUPPLY_GOODS, rows);
+  const count = writeObjectsToSheet(APP.sheets.SUPPLY_DETAILS, rows);
   writeLog({
     startedAt,
     finishedAt:   new Date(),
-    functionName: 'loadSupplyGoods',
+    functionName: 'loadSupplyDetails',
     status:       'OK',
     cabinet:      'ВСЕ',
     rowsLoaded:   count
   });
-  SpreadsheetApp.getActive().toast(`Товары поставок: ${count} строк`, '📦 Товары', 3);
+  SpreadsheetApp.getActive().toast(`Детализация поставок: ${count} строк`, '📦 Детали', 3);
   return count;
 }
 
-/**
- * Загружает упаковку каждой поставки (GET /api/v1/supplies/{ID}/package).
- * Разворачивает в плоские строки: 1 строка = 1 товар в упаковке.
- * Записывает в лист ПОСТАВКИ_УПАКОВКА.
- */
-function loadSupplyPackages() {
-  const startedAt = new Date();
-  const tasks = _getSupplyTasks();
-  const rows  = [];
+// ============================================================
+// РЕКЛАМНЫЕ РАСХОДЫ — Promotion API
+// ============================================================
 
-  tasks.forEach(task => {
-    let resp;
+/**
+ * Загружает историю затрат на рекламу по дням.
+ * Записывает в лист Рекламные_расходы.
+ *
+ * API: POST /adv/v1/fullstats
+ * Лимит: 10 запросов/мин
+ * Токен: категория "Продвижение"
+ *
+ * Алгоритм:
+ *  1. Получаем список кампаний (GET /adv/v1/promotion/adverts)
+ *  2. Для каждых 100 кампаний запрашиваем статистику (POST /adv/v1/fullstats)
+ *  3. Разворачиваем по дням
+ */
+function loadAdExpenses() {
+  const startedAt = new Date();
+  const apiKeys  = getApiKeys();
+  const dateFrom = parseDateToIso(getSetting(APP.settings.PROMO_DATE_FROM, '2026-04-01'), '2026-04-01');
+  const dateTo   = parseDateToIso(getSetting(APP.settings.PROMO_DATE_TO,   '2026-04-30'), '2026-04-30');
+  const rows     = [];
+
+  apiKeys.forEach(item => {
+    // Шаг 1: Получить список кампаний
+    let campaigns;
     try {
-      resp = wbRequest(
-        'supplies',
-        `/api/v1/supplies/${encodeURIComponent(task.supplyID)}/package`,
-        'GET', null, task.apiKey
-      );
+      campaigns = wbRequest('promotion', '/adv/v1/promotion/adverts', 'GET', null, item.apiKey);
     } catch (e) {
-      Logger.log(`[loadSupplyPackages] supplyID=${task.supplyID}: ${e.message}`);
+      Logger.log(`[loadAdExpenses] Список кампаний, кабинет "${item.cabinet}": ${e.message}`);
       return;
     }
 
-    if (!resp) return;
+    if (!campaigns || !Array.isArray(campaigns) || !campaigns.length) return;
 
-    const packages = Array.isArray(resp) ? resp : [resp];
-
-    packages.forEach((pkg, pkgIdx) => {
-      // Попытаться найти массив товаров под разными ключами (WB API нестабилен)
-      const goods = pkg.goods || pkg.items || pkg.products ||
-                    pkg.goodInBoxes || pkg.goodInBox || pkg.boxes || [];
-
-      if (!Array.isArray(goods) || !goods.length) {
-        // Нет товаров — пишем хотя бы строку упаковки
-        rows.push({
-          cabinet:      task.cabinet,
-          supplyID:     task.supplyID,
-          packageIndex: pkgIdx + 1,
-          goodIndex:    '',
-          packageID:    pkg.ID || pkg.id || pkg.packageID || pkg.boxID || '',
-          packageName:  pkg.name || pkg.packageName || pkg.boxName || '',
-          boxType:      pkg.boxType || pkg.boxTypeName || pkg.type || '',
-          barcode: '', techSize: '', wbSize: '', quantity: '', nmId: '', vendorCode: ''
-        });
-        return;
-      }
-
-      goods.forEach((good, goodIdx) => {
-        const barcode = good.barcode || good.sku || good.chestBarcode || '';
-        rows.push({
-          cabinet:      task.cabinet,
-          supplyID:     task.supplyID,
-          packageIndex: pkgIdx + 1,
-          goodIndex:    goodIdx + 1,
-          packageID:    pkg.ID || pkg.id || pkg.packageID || pkg.boxID || '',
-          packageName:  pkg.name || pkg.packageName || pkg.boxName || '',
-          boxType:      pkg.boxType || pkg.boxTypeName || pkg.type || '',
-          barcode:      Array.isArray(barcode) ? barcode.join(', ') : barcode,
-          techSize:     good.techSize || good.size || '',
-          wbSize:       good.wbSize || good.sizeName || '',
-          quantity:     good.quantity || good.qty || 1,
-          nmId:         good.nmId || good.nmID || '',
-          vendorCode:   good.vendorCode || good.supplierArticle || ''
-        });
-      });
+    // Маппинг advertId → { name, type, status }
+    const campMap = {};
+    campaigns.forEach(c => {
+      const id = c.advertId || c.id || 0;
+      campMap[id] = {
+        name:   c.name   || c.advertName || '',
+        type:   c.type   || 0,
+        status: c.status || 0
+      };
     });
 
-    Utilities.sleep(WB_API.supplies.rateLimit.sleepMs);
+    const advertIds = Object.keys(campMap).map(Number).filter(Boolean);
+
+    // Шаг 2: Запросить fullstats батчами по 100
+    for (let i = 0; i < advertIds.length; i += 100) {
+      const batch = advertIds.slice(i, i + 100);
+
+      let stats;
+      try {
+        stats = wbRequest('promotion', '/adv/v1/fullstats', 'POST', batch, item.apiKey, {
+          dateFrom, dateTo
+        });
+      } catch (e) {
+        Logger.log(`[loadAdExpenses] fullstats batch ${i}, кабинет "${item.cabinet}": ${e.message}`);
+        Utilities.sleep(WB_API.promotion.rateLimit.sleepMs);
+        continue;
+      }
+
+      if (!stats || !Array.isArray(stats)) {
+        Utilities.sleep(WB_API.promotion.rateLimit.sleepMs);
+        continue;
+      }
+
+      // Шаг 3: Развернуть по дням
+      stats.forEach(campStat => {
+        const advId = campStat.advertId || 0;
+        const info  = campMap[advId] || {};
+        const days  = campStat.days || [];
+
+        days.forEach(day => {
+          const apps = day.apps || [day];
+          apps.forEach(app => {
+            rows.push({
+              cabinet:    item.cabinet,
+              date:       formatDateOnlyRu(day.date),
+              advertId:   advId,
+              advertName: info.name,
+              type:       info.type,
+              status:     info.status,
+              views:      pickNumber(app, ['views']),
+              clicks:     pickNumber(app, ['clicks']),
+              ctr:        pickNumber(app, ['ctr']),
+              cpc:        pickNumber(app, ['cpc']),
+              sum:        pickNumber(app, ['sum']),
+              atbs:       pickNumber(app, ['atbs']),
+              orders:     pickNumber(app, ['orders']),
+              cr:         pickNumber(app, ['cr']),
+              shks:       pickNumber(app, ['shks']),
+              sum_price:  pickNumber(app, ['sum_price'])
+            });
+          });
+        });
+      });
+
+      Utilities.sleep(WB_API.promotion.rateLimit.sleepMs);
+    }
+
+    markApiUsed(item.row);
   });
 
-  const count = writeObjectsToSheet(APP.sheets.SUPPLY_PACKAGES, rows);
+  const count = writeObjectsToSheet(APP.sheets.AD_EXPENSES, rows);
   writeLog({
     startedAt,
     finishedAt:   new Date(),
-    functionName: 'loadSupplyPackages',
+    functionName: 'loadAdExpenses',
     status:       'OK',
     cabinet:      'ВСЕ',
     rowsLoaded:   count
   });
-  SpreadsheetApp.getActive().toast(`Упаковка: ${count} строк`, '📦 Упаковка', 3);
+  SpreadsheetApp.getActive().toast(`Рекламные расходы: ${count} строк`, '📣 Реклама', 3);
   return count;
 }
 
@@ -715,27 +328,9 @@ function loadSupplyPackages() {
 // ГРУППОВЫЕ ОБНОВЛЕНИЯ
 // ============================================================
 
-/** Обновить все Финансы: баланс + бюджеты + затраты + отчёт */
-function loadAllFinance() {
-  loadBalance();
-  loadCampaignBudgets();
-  loadCostHistory();
-  loadFinance();
-  SpreadsheetApp.getActive().toast('Финансы обновлены', '💳 Финансы', 3);
-}
-
-/** Обновить все Поставки: список + детали + товары + упаковка */
+/** Обновить все Поставки: список + детализация по товарам */
 function loadAllSupplies() {
   loadSupplies();
   loadSupplyDetails();
-  loadSupplyGoods();
-  loadSupplyPackages();
-  SpreadsheetApp.getActive().toast('Поставки обновлены полностью', '🚚 Поставки', 3);
-}
-
-/** Обновить все Отчёты: расходы + ДДР */
-function loadAllReports() {
-  buildExpensesFromFinance();
-  buildDDR();
-  SpreadsheetApp.getActive().toast('Отчёты обновлены', '📈 Отчёты', 3);
+  SpreadsheetApp.getActive().toast('Поставки обновлены', '🚚 Поставки', 3);
 }
