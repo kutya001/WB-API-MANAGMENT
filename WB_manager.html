@@ -838,10 +838,7 @@ var SETTINGS_META = {
   MAX_PAGES_PER_RUN:  { label: 'Макс. страниц за запуск',  desc: 'Макс. страниц пагинации за один запуск', group: 'Общие', type: 'number' },
   ORDERS_DATE_FROM:   { label: 'Заказы: дата с',           desc: 'Загружать заказы начиная с этой даты',   group: 'Заказы и Продажи', type: 'date' },
   SALES_DATE_FROM:    { label: 'Продажи: дата с',          desc: 'Загружать продажи начиная с этой даты',  group: 'Заказы и Продажи', type: 'date' },
-  SUPPLIES_DATE_FROM: { label: 'Поставки: дата с',         desc: 'Начало периода поставок',     group: 'Поставки', type: 'date' },
-  SUPPLIES_DATE_TO:   { label: 'Поставки: дата по',        desc: 'Конец периода поставок',      group: 'Поставки', type: 'date' },
-  SUPPLIES_DATE_TYPE: { label: 'Поставки: тип даты',       desc: 'По какой дате фильтровать',   group: 'Поставки', type: 'select', options: ['factDate','createDate','supplyDate'] },
-  SUPPLIES_STATUS_IDS:{ label: 'Поставки: статусы',        desc: 'ID статусов через запятую (пусто = все)', group: 'Поставки' },
+  SUPPLIES_STATUS_IDS:{ label: 'Поставки: статусы',        desc: '1=Не заплан. 2=Заплан. 3=Выгрузка 4=Приёмка 5=Принята 6=Выгружена (пусто = все)', group: 'Поставки' },
   SUPPLIES_LIMIT:     { label: 'Поставки: лимит',          desc: 'Записей за один запрос (макс. 1000)',     group: 'Поставки', type: 'number' },
   PROMO_DATE_FROM:    { label: 'Реклама: дата с',          desc: 'Начало периода затрат на рекламу',   group: 'Продвижение', type: 'date' },
   PROMO_DATE_TO:      { label: 'Реклама: дата по',         desc: 'Конец периода затрат на рекламу',    group: 'Продвижение', type: 'date' }

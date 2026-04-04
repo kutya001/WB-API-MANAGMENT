@@ -19,6 +19,8 @@
  * Записывает в лист Поставки_ВБ.
  *
  * API: POST /api/v1/supplies
+ * Body: {} — без фильтров возвращает последние 1000 поставок
+ *       { statusIDs: [1,2,...] } — фильтр по статусам
  * Пагинация: offset-based (limit/offset — query-параметры)
  * Лимит: 30 запросов/мин, интервал 2 сек
  */
@@ -26,10 +28,8 @@ function loadSupplies() {
   const startedAt = new Date();
   const apiKeys = getApiKeys();
   const rows = [];
+  const errors = [];
 
-  const dateFrom  = parseDateToIso(getSetting(APP.settings.SUPPLIES_DATE_FROM, '2026-03-01'), '2026-03-01');
-  const dateTo    = parseDateToIso(getSetting(APP.settings.SUPPLIES_DATE_TO,   '2026-04-30'), '2026-04-30');
-  const dateType  = getSetting(APP.settings.SUPPLIES_DATE_TYPE, 'factDate');
   const statusRaw = getSetting(APP.settings.SUPPLIES_STATUS_IDS, '');
   const statusIDs = statusRaw ? statusRaw.split(',').map(s => Number(s.trim())).filter(Boolean) : [];
   const limit     = Math.min(Number(getSetting(APP.settings.SUPPLIES_LIMIT, '1000')) || 1000, 1000);
@@ -39,21 +39,17 @@ function loadSupplies() {
     let hasMore = true;
 
     while (hasMore) {
-      // Body: dates + statusIDs (top-level); limit/offset — query-параметры
-      const payload = {
-        dates: [{
-          dateFrom: dateFrom + 'T00:00:00Z',
-          dateTo:   dateTo   + 'T23:59:59Z',
-          dateType: dateType
-        }]
-      };
+      // Body: statusIDs — опциональный фильтр; без него API вернёт последние 1000
+      const payload = {};
       if (statusIDs.length) payload.statusIDs = statusIDs;
 
       let resp;
       try {
         resp = wbRequest('supplies', '/api/v1/supplies', 'POST', payload, item.apiKey, { limit, offset });
       } catch (e) {
-        Logger.log(`[loadSupplies] Кабинет "${item.cabinet}": ${e.message}`);
+        const errMsg = `Кабинет "${item.cabinet}": ${e.message}`;
+        Logger.log(`[loadSupplies] ${errMsg}`);
+        errors.push(errMsg);
         hasMore = false;
         break;
       }
@@ -87,15 +83,22 @@ function loadSupplies() {
   });
 
   const count = writeObjectsToSheet(APP.sheets.SUPPLIES, rows);
+  const hasErrors = errors.length > 0;
   writeLog({
     startedAt,
     finishedAt:   new Date(),
     functionName: 'loadSupplies',
-    status:       'OK',
+    status:       hasErrors && !count ? 'ERROR' : hasErrors ? 'PARTIAL' : 'OK',
     cabinet:      'ВСЕ',
-    rowsLoaded:   count
+    rowsLoaded:   count,
+    errorMessage: hasErrors ? errors.join('; ') : ''
   });
-  SpreadsheetApp.getActive().toast(`Поставки: ${count} строк`, '📦 Поставки', 3);
+
+  if (hasErrors && !count) {
+    SpreadsheetApp.getActive().toast('❌ Ошибка: ' + errors[0], '📦 Поставки', 5);
+  } else {
+    SpreadsheetApp.getActive().toast(`Поставки: ${count} строк`, '📦 Поставки', 3);
+  }
   return count;
 }
 

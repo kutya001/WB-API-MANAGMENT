@@ -127,9 +127,6 @@ const APP = {
     // Даты загрузки
     ORDERS_DATE_FROM:       'ORDERS_DATE_FROM',
     SALES_DATE_FROM:        'SALES_DATE_FROM',
-    SUPPLIES_DATE_FROM:     'SUPPLIES_DATE_FROM',
-    SUPPLIES_DATE_TO:       'SUPPLIES_DATE_TO',
-    SUPPLIES_DATE_TYPE:     'SUPPLIES_DATE_TYPE',
     SUPPLIES_STATUS_IDS:    'SUPPLIES_STATUS_IDS',
     SUPPLIES_LIMIT:         'SUPPLIES_LIMIT',
     // Продвижение
@@ -163,10 +160,7 @@ const DEFAULT_SETTINGS = [
   { key: 'SALES_DATE_FROM',       value: '2026-04-01',    group: 'Продажи',  description: 'Продажи: загружать с даты (YYYY-MM-DD)' },
 
   // --- Поставки FBW ---
-  { key: 'SUPPLIES_DATE_FROM',    value: '2026-03-01',    group: 'Поставки', description: 'Поставки: дата начала периода (YYYY-MM-DD)' },
-  { key: 'SUPPLIES_DATE_TO',      value: '2026-04-30',    group: 'Поставки', description: 'Поставки: дата конца периода (YYYY-MM-DD)' },
-  { key: 'SUPPLIES_DATE_TYPE',    value: 'factDate',      group: 'Поставки', description: 'Поставки: тип даты (factDate / createDate / supplyDate)' },
-  { key: 'SUPPLIES_STATUS_IDS',   value: '',              group: 'Поставки', description: 'Поставки: фильтр статусов через запятую (пусто = все)' },
+  { key: 'SUPPLIES_STATUS_IDS',   value: '',              group: 'Поставки', description: 'Поставки: фильтр статусов (1-6 через запятую, пусто = все). 1=Не запланирована 2=Запланирована 3=Разрешена выгрузка 4=Приёмка 5=Принята 6=Выгружена' },
   { key: 'SUPPLIES_LIMIT',        value: '1000',          group: 'Поставки', description: 'Поставки: кол-во за один запрос (макс. 1000)' },
 
   // --- Продвижение ---
