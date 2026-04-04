@@ -22,9 +22,9 @@
  * @returns {HtmlOutput}
  */
 function doGet(e) {
-  return HtmlService.createTemplateFromFile('Sidebar')
+  return HtmlService.createTemplateFromFile('WB_manager')
     .evaluate()
-    .setTitle('🛍️ WB Учёт')
+    .setTitle('🛍️ WB Менеджер')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
@@ -42,6 +42,7 @@ function onOpen() {
     .addItem('⚙️ Создать / обновить НАСТРОЙКИ', 'initSettingsSheet')
     .addItem('📘 Обновить МЕТАДАННЫЕ',           'initMetadataSheet')
     .addItem('📊 Открыть управление (UI)',        'showSidebar')
+    .addItem('🌐 WB Менеджер (полный интерфейс)', 'showWbManager')
     .addSeparator()
 
     // --- Товары ---
@@ -123,7 +124,21 @@ function showSidebar() {
 }
 
 /**
- * Возвращает данные для Sidebar: настройки + статус листов.
+ * Открывает полноценный менеджер WB в модальном диалоге.
+ * Вызывается из Sidebar.html или из меню.
+ */
+function showWbManager() {
+  const html = HtmlService.createTemplateFromFile('WB_manager')
+    .evaluate()
+    .setTitle('🛍️ WB Менеджер')
+    .setWidth(1100)
+    .setHeight(700);
+
+  SpreadsheetApp.getUi().showModalDialog(html, '🛍️ WB Менеджер');
+}
+
+/**
+ * Возвращает данные для Sidebar: настройки + статус листов + последнее обновление.
  * Вызывается из клиентского JS через google.script.run.
  *
  * @returns {Object} - { settings, sheets }
@@ -132,18 +147,48 @@ function getSidebarData() {
   let settings = {};
   try { settings = getSettingsMap(); } catch (e) { settings = {}; }
 
-  // Статус листов (есть/нет, кол-во строк)
+  // Получаем время последнего обновления из ЛОГИ
+  const lastUpdates = _getSheetLastUpdates();
+
+  // Статус листов (есть/нет, кол-во строк, последнее обновление)
   const ss = SpreadsheetApp.getActive();
   const sheetsStatus = {};
 
   Object.values(APP.sheets).forEach(name => {
     const sheet = ss.getSheetByName(name);
     sheetsStatus[name] = sheet
-      ? { exists: true, rows: Math.max(0, sheet.getLastRow() - 1) }
-      : { exists: false, rows: 0 };
+      ? { exists: true, rows: Math.max(0, sheet.getLastRow() - 1), lastUpdate: lastUpdates[name] || '' }
+      : { exists: false, rows: 0, lastUpdate: '' };
   });
 
   return { settings, sheets: sheetsStatus };
+}
+
+/**
+ * Возвращает словарь { листName: lastUpdate } из листа ЛОГИ.
+ * Ищет последний успешный лог для каждого целевого листа.
+ * @returns {Object.<string, string>}
+ */
+function _getSheetLastUpdates() {
+  const result = {};
+  try {
+    const ss = SpreadsheetApp.getActive();
+    const logSheet = ss.getSheetByName(APP.sheets.LOGS);
+    if (!logSheet || logSheet.getLastRow() < 2) return result;
+
+    const data = logSheet.getDataRange().getValues();
+    // Колонки: startedAt(0), finishedAt(1), dur(2), funcName(3), displayName(4), targetSheet(5), status(6)
+    for (let i = data.length - 1; i >= 1; i--) {
+      const targetSheet = String(data[i][5] || '').trim();
+      const status = String(data[i][6] || '').trim();
+      if (targetSheet && status === 'OK' && !result[targetSheet]) {
+        result[targetSheet] = String(data[i][1] || '');
+      }
+    }
+  } catch (e) {
+    Logger.log('[_getSheetLastUpdates] ' + e.message);
+  }
+  return result;
 }
 
 /**

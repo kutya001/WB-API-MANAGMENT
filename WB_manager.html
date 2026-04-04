@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🛍️ WB Менеджер</title>
+<style>
+  :root {
+    --primary: #2d5be3;
+    --primary-dark: #1a3ab8;
+    --primary-light: #e8eaf6;
+    --primary-bg: #f0f4ff;
+    --bg: #f4f6fb;
+    --card: #fff;
+    --text: #1a1a2e;
+    --text-secondary: #666;
+    --text-muted: #888;
+    --border: #e8eaf6;
+    --success: #2e7d32;
+    --success-bg: #e8f5e9;
+    --danger: #d32f2f;
+    --danger-bg: #ffebee;
+    --warning-bg: #fff3e0;
+    --warning: #e65100;
+    --info: #1565c0;
+    --info-bg: #e3f2fd;
+    --radius: 10px;
+    --sidebar-w: 240px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ═══════ HEADER ═══════ */
+  .topbar {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+  .topbar .logo { font-size: 18px; font-weight: 800; letter-spacing: 0.4px; white-space: nowrap; }
+  .topbar .sub { font-size: 12px; opacity: 0.75; margin-left: 8px; }
+  .topbar .spacer { flex: 1; }
+  .topbar .status-pill {
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.2);
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .topbar .status-pill.ok { background: rgba(76,175,80,0.4); }
+  .topbar .status-pill.error { background: rgba(244,67,54,0.4); }
+  .topbar .status-pill.loading { background: rgba(255,255,255,0.25); }
+  .menu-toggle {
+    display: none;
+    background: none; border: none; color: #fff;
+    font-size: 22px; cursor: pointer; padding: 4px 8px;
+  }
+
+  /* ═══════ LAYOUT ═══════ */
+  .layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ═══════ SIDEBAR NAV ═══════ */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    padding: 12px 0;
+    overflow-y: auto;
+    flex-shrink: 0;
+    transition: transform 0.25s;
+  }
+  .nav-section {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding: 12px 20px 4px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.12s;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: var(--primary-bg); color: var(--primary); }
+  .nav-item.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+    font-weight: 600;
+    border-left-color: var(--primary);
+  }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* ═══════ MAIN CONTENT ═══════ */
+  .main {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    min-width: 0;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  /* ═══════ CARDS ═══════ */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--primary);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ═══════ BUTTONS ═══════*/
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: var(--primary-bg); color: var(--primary); border: 1px solid #c5d2f8; }
+  .btn-secondary:hover { background: #e0e8ff; }
+  .btn-group-head { background: var(--primary-light); color: var(--primary-dark); border: 1px solid #c5d2f8; font-weight: 600; }
+  .btn-group-head:hover { background: #d0d7f7; }
+  .btn-success { background: var(--success-bg); color: var(--success); border: 1px solid #c8e6c9; }
+  .btn-success:hover { background: #d4edda; }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #ffcdd2; }
+  .btn-danger:hover { background: #ffe0e0; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn .icon { font-size: 15px; }
+
+  .btn.running { background: var(--info-bg); color: var(--info); border-color: #90caf9; position: relative; }
+  .btn.running::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--primary);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  /* ═══════ GRID ═══════ */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ═══════ TABLES ═══════ */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl th {
+    background: var(--primary); color: #fff;
+    padding: 7px 10px; text-align: left; font-weight: 600;
+    position: sticky; top: 0;
+  }
+  .tbl td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; }
+  .tbl tr:hover td { background: #f8f9ff; }
+  .tbl .link { color: var(--primary); cursor: pointer; text-decoration: none; }
+  .tbl .link:hover { text-decoration: underline; }
+  .tbl .mono { font-family: monospace; font-size: 11px; color: #555; }
+  .tbl .muted { color: var(--text-muted); font-size: 11px; }
+  .tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .badge-ok    { background: var(--success-bg); color: var(--success); }
+  .badge-empty { background: var(--warning-bg); color: var(--warning); }
+  .badge-num   { background: var(--info-bg); color: var(--info); }
+
+  /* ═══════ FORM ═══════ */
+  .form-group { margin-bottom: 12px; }
+  .form-group label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: #444; margin-bottom: 3px;
+  }
+  .form-group .desc { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 7px 10px;
+    border: 1px solid #dde2f0; border-radius: 6px;
+    font-size: 13px; color: var(--text); background: #fff;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--primary); box-shadow: 0 0 0 2px #dde8ff;
+  }
+  input[type="date"] { font-family: inherit; }
+
+  .form-section-title {
+    font-size: 12px; font-weight: 700; color: var(--primary);
+    margin: 16px 0 8px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .form-section-title:first-child { margin-top: 0; }
+
+  .cabinet-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 0; font-size: 13px;
+  }
+  .cabinet-item input[type="checkbox"] { accent-color: var(--primary); }
+
+  /* Token list */
+  .token-entry {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0; border-bottom: 1px solid #f0f0f0;
+    font-size: 12px;
+  }
+  .token-entry .name { font-weight: 600; flex: 1; }
+  .token-entry .preview { color: var(--text-muted); font-family: monospace; font-size: 11px; }
+  .token-entry .used { color: var(--text-muted); font-size: 10px; }
+  .token-entry .del-btn {
+    background: none; border: none; color: var(--danger);
+    cursor: pointer; font-size: 14px; padding: 2px 4px;
+  }
+
+  /* Help / docs */
+  .doc-sheet {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .doc-sheet-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; cursor: pointer;
+    font-weight: 700; font-size: 13px; color: var(--primary);
+    background: var(--primary-bg);
+    transition: background 0.12s;
+  }
+  .doc-sheet-header:hover { background: #e0e8ff; }
+  .doc-sheet-body { display: none; }
+  .doc-sheet.open .doc-sheet-body { display: block; }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid #c5d2f8; border-top-color: var(--primary);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 5px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ═══════ RESPONSIVE ═══════ */
+  @media (max-width: 768px) {
+    :root { --sidebar-w: 220px; }
+    .main { padding: 16px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .menu-toggle { display: block; }
+    .sidebar {
+      position: fixed;
+      top: 48px; left: 0; bottom: 0;
+      z-index: 90;
+      transform: translateX(-100%);
+      box-shadow: 4px 0 16px rgba(0,0,0,0.15);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 85;
+      background: rgba(0,0,0,0.3);
+    }
+    .overlay.open { display: block; }
+  }
+  @media (max-width: 480px) {
+    .topbar { padding: 10px 14px; }
+    .topbar .logo { font-size: 15px; }
+    .topbar .sub { display: none; }
+    .main { padding: 12px; }
+    .card { padding: 14px; }
+    .btn { padding: 7px 12px; font-size: 12px; }
+    .page-title { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <button class="menu-toggle" onclick="toggleMobileMenu()">☰</button>
+  <div class="logo">🛍️ WB Менеджер</div>
+  <span class="sub" id="top-sub">v2.1</span>
+  <div class="spacer"></div>
+  <div class="status-pill" id="status-pill">ℹ️ Готов к работе</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="toggleMobileMenu()"></div>
+
+<div class="layout">
+  <!-- Sidebar navigation -->
+  <nav class="sidebar" id="sidebar">
+    <div class="nav-section">Основное</div>
+    <div class="nav-item active" data-page="dashboard" onclick="goPage('dashboard')">
+      <span class="icon">📊</span> Обзор
+    </div>
+    <div class="nav-item" data-page="actions" onclick="goPage('actions')">
+      <span class="icon">⚡</span> Действия
+    </div>
+    <div class="nav-item" data-page="sheets" onclick="goPage('sheets')">
+      <span class="icon">📋</span> Листы
+    </div>
+
+    <div class="nav-section">Управление</div>
+    <div class="nav-item" data-page="tokens" onclick="goPage('tokens')">
+      <span class="icon">🔑</span> Токены
+    </div>
+    <div class="nav-item" data-page="settings" onclick="goPage('settings')">
+      <span class="icon">⚙️</span> Настройки
+    </div>
+
+    <div class="nav-section">Информация</div>
+    <div class="nav-item" data-page="docs" onclick="goPage('docs')">
+      <span class="icon">📖</span> Справка
+    </div>
+  </nav>
+
+  <!-- Main content area -->
+  <div class="main" id="main">
+
+    <!-- ═══════ PAGE: DASHBOARD ═══════ -->
+    <div class="page active" id="page-dashboard">
+      <h1 class="page-title">📊 Обзор системы</h1>
+
+      <div class="btn-row" style="margin-bottom: 20px">
+        <button class="btn btn-primary" data-func="loadAll" onclick="run('loadAll')">
+          <span class="icon">🚀</span> Обновить всё
+        </button>
+        <button class="btn btn-secondary" onclick="refreshDashboard()">
+          <span class="icon">🔄</span> Обновить статус
+        </button>
+      </div>
+
+      <!-- Кабинеты -->
+      <div class="card">
+        <div class="card-title">🏢 Кабинеты</div>
+        <div id="d-cabinets"><span class="muted">Загрузка...</span></div>
+        <div style="margin-top: 8px">
+          <button class="btn btn-sm btn-secondary" onclick="saveCabinets()">💾 Сохранить выбор</button>
+        </div>
+      </div>
+
+      <!-- Sheets status -->
+      <div class="card">
+        <div class="card-title">📋 Состояние листов</div>
+        <div style="overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th>Лист</th><th class="num">Строк</th><th>Обновлён</th></tr></thead>
+            <tbody id="d-sheets-tbody">
+              <tr><td colspan="3" class="muted" style="padding:12px">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ PAGE: ACTIONS ═══════ -->
+    <div class="page" id="page-actions">
+      <h1 class="page-title">⚡ Действия</h1>
+
+      <div class="card">
+        <div class="card-title">🚀 Полное обновление</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" data-func="loadAll" onclick="run('loadAll')">
+            <span class="icon">🚀</span> Обновить всё
+          </button>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">📦 Товары</div>
+          <div class="btn-row">
+            <button class="btn btn-group-head" data-func="loadAllGoods" onclick="run('loadAllGoods')">📦 Все товары</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" data-func="loadArticles" onclick="run('loadArticles')">🔄 Артикулы</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadArticleBarcodes" onclick="run('loadArticleBarcodes')">🔗 Баркоды</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadStocksWb" onclick="run('loadStocksWb')">📊 Остатки WB</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadStocksByBarcode" onclick="run('loadStocksByBarcode')">📊 По баркодам</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🚚 Поставки FBW</div>
+          <div class="btn-row">
+            <button class="btn btn-group-head" data-func="loadAllSupplies" onclick="run('loadAllSupplies')">🚚 Все поставки</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" data-func="loadSupplies" onclick="run('loadSupplies')">📦 Список</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadSupplyDetails" onclick="run('loadSupplyDetails')">📋 Детали</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadSupplyGoods" onclick="run('loadSupplyGoods')">🧴 Товары</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadSupplyPackages" onclick="run('loadSupplyPackages')">📦 Упаковка</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🛒 Заказы и Продажи</div>
+          <div class="btn-row">
+            <button class="btn btn-group-head" data-func="loadAllOrdersSales" onclick="run('loadAllOrdersSales')">🛒 Все заказы+продажи</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" data-func="loadOrders" onclick="run('loadOrders')">📊 Заказы</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadSales" onclick="run('loadSales')">💰 Продажи</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💳 Финансы</div>
+          <div class="btn-row">
+            <button class="btn btn-group-head" data-func="loadAllFinance" onclick="run('loadAllFinance')">💳 Все финансы</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" data-func="loadBalance" onclick="run('loadBalance')">💳 Баланс</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadCampaignBudgets" onclick="run('loadCampaignBudgets')">💰 Бюджеты</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadCostHistory" onclick="run('loadCostHistory')">📊 Затраты</button>
+            <button class="btn btn-secondary btn-sm" data-func="loadFinance" onclick="run('loadFinance')">🧾 Фин. отчёт</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📈 Отчёты</div>
+        <div class="btn-row">
+          <button class="btn btn-group-head" data-func="loadAllReports" onclick="run('loadAllReports')">📈 Все отчёты</button>
+          <button class="btn btn-success" data-func="buildExpensesFromFinance" onclick="run('buildExpensesFromFinance')">📉 Расходы</button>
+          <button class="btn btn-success" data-func="buildDDR" onclick="run('buildDDR')">📘 ДДР</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛠️ Система</div>
+        <div class="btn-row">
+          <button class="btn btn-secondary btn-sm" data-func="initSettingsSheet" onclick="run('initSettingsSheet')">⚙️ Создать НАСТРОЙКИ</button>
+          <button class="btn btn-secondary btn-sm" data-func="initMetadataSheet" onclick="run('initMetadataSheet')">📘 Обновить МЕТАДАННЫЕ</button>
+          <button class="btn btn-danger btn-sm" data-func="clearLogs" onclick="run('clearLogs')">🗑️ Очистить логи</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ PAGE: SHEETS ═══════ -->
+    <div class="page" id="page-sheets">
+      <h1 class="page-title">📋 Состояние листов</h1>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">Нажмите на лист, чтобы перейти к нему в Google Sheets</p>
+      <div class="card" style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>Лист</th><th class="num">Строк</th><th>Последнее обновление</th><th>Статус</th></tr></thead>
+          <tbody id="p-sheets-tbody">
+            <tr><td colspan="4" class="muted" style="padding:12px">Загрузка...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="btn btn-secondary" onclick="loadSheetsData()" style="margin-top:8px">🔄 Обновить</button>
+    </div>
+
+    <!-- ═══════ PAGE: TOKENS ═══════ -->
+    <div class="page" id="page-tokens">
+      <h1 class="page-title">🔑 API Токены</h1>
+
+      <div class="card">
+        <div class="card-title">Существующие кабинеты</div>
+        <div id="p-token-list"><span class="muted">Загрузка...</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Добавить кабинет</div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Название кабинета</label>
+            <input type="text" id="new-cab-name" placeholder="Мой магазин">
+          </div>
+          <div class="form-group">
+            <label>API Токен</label>
+            <input type="password" id="new-cab-token" placeholder="eyJhbGciOi...">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addApiKey()">➕ Добавить</button>
+          <button class="btn btn-secondary" onclick="validateToken()">🔍 Проверить токен</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Категории токенов WB</div>
+        <table class="tbl">
+          <thead><tr><th>Категория</th><th>Назначение</th></tr></thead>
+          <tbody>
+            <tr><td>Контент</td><td>Артикулы, карточки (/content/v2/...)</td></tr>
+            <tr><td>Статистика</td><td>Заказы, продажи, финансовый отчёт</td></tr>
+            <tr><td>Поставки FBW</td><td>Поставки, детали (/api/v1/supplies/...)</td></tr>
+            <tr><td>Финансы</td><td>Баланс (/api/v1/account/balance)</td></tr>
+            <tr><td>Продвижение</td><td>Бюджеты, затраты на рекламу (/adv/v1/...)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════ PAGE: SETTINGS ═══════ -->
+    <div class="page" id="page-settings">
+      <h1 class="page-title">⚙️ Настройки</h1>
+      <div class="card">
+        <div id="p-settings-form"><span class="muted">Загрузка...</span></div>
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Сохранить настройки</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ PAGE: DOCS ═══════ -->
+    <div class="page" id="page-docs">
+      <h1 class="page-title">📖 Справка</h1>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">
+        Нажмите на название листа, чтобы развернуть описание столбцов
+      </p>
+      <div id="p-docs-container"><span class="muted">Загрузка справки...</span></div>
+    </div>
+
+  </div><!-- .main -->
+</div><!-- .layout -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+var isRunning = false;
+var runningFunc = null;
+var currentSettings = {};
+var docsLoaded = false;
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+function goPage(name) {
+  document.querySelectorAll('.nav-item').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.page').forEach(function(el) { el.classList.remove('active'); });
+  var navEl = document.querySelector('[data-page="' + name + '"]');
+  if (navEl) navEl.classList.add('active');
+  var pageEl = document.getElementById('page-' + name);
+  if (pageEl) pageEl.classList.add('active');
+
+  // lazy load
+  if (name === 'sheets')   loadSheetsData();
+  if (name === 'tokens')   loadTokenList();
+  if (name === 'settings') loadSettingsPage();
+  if (name === 'docs')     loadDocs();
+
+  // close mobile menu
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function toggleMobileMenu() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════
+// STATUS
+// ═══════════════════════════════════════════════════════
+function setStatus(msg, type) {
+  var pill = document.getElementById('status-pill');
+  pill.className = 'status-pill ' + (type || '');
+  pill.innerHTML = msg;
+}
+
+// ═══════════════════════════════════════════════════════
+// RUN FUNCTION
+// ═══════════════════════════════════════════════════════
+function run(funcName) {
+  if (isRunning) { setStatus('⏳ Выполняется: ' + runningFunc, 'loading'); return; }
+
+  isRunning = true;
+  runningFunc = funcName;
+  setAllBtns(true);
+  highlightBtn(funcName, true);
+  setStatus('<span class="spinner"></span> ' + funcName + '...', 'loading');
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      isRunning = false; runningFunc = null;
+      setAllBtns(false); highlightBtn(funcName, false);
+      if (r && r.ok === false) setStatus('❌ ' + r.message, 'error');
+      else {
+        setStatus('✅ ' + (r && r.message ? r.message : funcName + ' выполнено'), 'ok');
+        loadSheetsData();
+      }
+    })
+    .withFailureHandler(function(e) {
+      isRunning = false; runningFunc = null;
+      setAllBtns(false); highlightBtn(funcName, false);
+      setStatus('❌ ' + e.message, 'error');
+    })
+    .runFromSidebar(funcName);
+}
+
+function setAllBtns(disabled) {
+  document.querySelectorAll('.btn').forEach(function(b) { b.disabled = disabled; });
+}
+function highlightBtn(funcName, active) {
+  document.querySelectorAll('[data-func="' + funcName + '"]').forEach(function(b) {
+    if (active) b.classList.add('running'); else b.classList.remove('running');
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// SHEETS DATA
+// ═══════════════════════════════════════════════════════
+function loadSheetsData() {
+  var targets = [
+    document.getElementById('d-sheets-tbody'),
+    document.getElementById('p-sheets-tbody')
+  ];
+  targets.forEach(function(t) {
+    if (t) t.innerHTML = '<tr><td colspan="4" class="muted" style="padding:10px">Загрузка...</td></tr>';
+  });
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      if (!data || !data.sheets) return;
+      var sheets = data.sheets;
+
+      // Dashboard table (3 cols)
+      var h1 = '';
+      Object.keys(sheets).forEach(function(name) {
+        var s = sheets[name];
+        var badge = s.exists
+          ? '<span class="badge badge-num">' + s.rows + '</span>'
+          : '<span class="badge badge-empty">нет</span>';
+        var upd = s.lastUpdate ? '<span class="muted">' + esc(String(s.lastUpdate)) + '</span>' : '';
+        h1 += '<tr onclick="goToSheet(\'' + esc(name) + '\')" style="cursor:pointer">'
+          + '<td class="link">' + esc(name) + '</td>'
+          + '<td class="num">' + badge + '</td>'
+          + '<td>' + upd + '</td></tr>';
+      });
+      var dt = document.getElementById('d-sheets-tbody');
+      if (dt) dt.innerHTML = h1;
+
+      // Sheets page table (4 cols)
+      var h2 = '';
+      Object.keys(sheets).forEach(function(name) {
+        var s = sheets[name];
+        var statusBadge = s.exists
+          ? '<span class="badge badge-ok">✓</span>'
+          : '<span class="badge badge-empty">—</span>';
+        var upd = s.lastUpdate ? esc(String(s.lastUpdate)) : '<span class="muted">—</span>';
+        h2 += '<tr onclick="goToSheet(\'' + esc(name) + '\')" style="cursor:pointer">'
+          + '<td class="link">' + esc(name) + '</td>'
+          + '<td class="num">' + (s.exists ? s.rows : '—') + '</td>'
+          + '<td>' + upd + '</td>'
+          + '<td>' + statusBadge + '</td></tr>';
+      });
+      var pt = document.getElementById('p-sheets-tbody');
+      if (pt) pt.innerHTML = h2;
+    })
+    .withFailureHandler(function(e) {
+      var msg = '<tr><td colspan="4" style="color:red">Ошибка: ' + esc(e.message) + '</td></tr>';
+      targets.forEach(function(t) { if (t) t.innerHTML = msg; });
+    })
+    .getSidebarData();
+}
+
+function goToSheet(name) { google.script.run.goToSheetByName(name); }
+
+// ═══════════════════════════════════════════════════════
+// CABINETS
+// ═══════════════════════════════════════════════════════
+function loadCabinets() {
+  google.script.run
+    .withSuccessHandler(function(cabs) {
+      var el = document.getElementById('d-cabinets');
+      if (!cabs || !cabs.length) { el.innerHTML = '<span class="muted">Нет кабинетов в листе API</span>'; return; }
+      var h = '';
+      cabs.forEach(function(c) {
+        h += '<div class="cabinet-item">'
+          + '<input type="checkbox" class="cab-check" value="' + esc(c.name) + '"' + (c.selected ? ' checked' : '') + '>'
+          + '<span>' + esc(c.name) + '</span></div>';
+      });
+      el.innerHTML = h;
+    })
+    .withFailureHandler(function() {
+      document.getElementById('d-cabinets').innerHTML = '<span class="muted">Ошибка загрузки</span>';
+    })
+    .getSidebarCabinets();
+}
+
+function saveCabinets() {
+  var checks = document.querySelectorAll('.cab-check');
+  var all = true, sel = [];
+  checks.forEach(function(c) { if (c.checked) sel.push(c.value); else all = false; });
+  var toSave = all ? [] : sel;
+  setStatus('<span class="spinner"></span> Сохранение кабинетов...', 'loading');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.ok) setStatus('✅ Кабинеты сохранены', 'ok');
+      else setStatus('❌ ' + (r && r.message || 'Ошибка'), 'error');
+    })
+    .withFailureHandler(function(e) { setStatus('❌ ' + e.message, 'error'); })
+    .saveCabinetsFromSidebar(toSave);
+}
+
+// ═══════════════════════════════════════════════════════
+// TOKENS
+// ═══════════════════════════════════════════════════════
+function loadTokenList() {
+  var el = document.getElementById('p-token-list');
+  el.innerHTML = '<span class="muted">Загрузка...</span>';
+
+  google.script.run
+    .withSuccessHandler(function(keys) {
+      if (!keys || !keys.length) { el.innerHTML = '<span class="muted">Нет кабинетов. Добавьте ниже.</span>'; return; }
+      var h = '';
+      keys.forEach(function(k) {
+        h += '<div class="token-entry">'
+          + '<span class="name">' + esc(k.name) + '</span>'
+          + '<span class="preview">' + esc(k.tokenPreview) + '</span>'
+          + (k.lastUsed ? '<span class="used">' + esc(k.lastUsed) + '</span>' : '')
+          + '<button class="del-btn" onclick="removeApiKey(' + k.row + ',\'' + escAttr(k.name) + '\')" title="Удалить">✕</button>'
+          + '</div>';
+      });
+      el.innerHTML = h;
+    })
+    .withFailureHandler(function() { el.innerHTML = '<span class="muted">Ошибка загрузки</span>'; })
+    .getApiKeysForSidebar();
+}
+
+function addApiKey() {
+  var name = document.getElementById('new-cab-name').value.trim();
+  var token = document.getElementById('new-cab-token').value.trim();
+  if (!name || !token) { setStatus('⚠️ Заполните название и токен', 'error'); return; }
+  setStatus('<span class="spinner"></span> Добавление...', 'loading');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.ok) {
+        setStatus('✅ ' + r.message, 'ok');
+        document.getElementById('new-cab-name').value = '';
+        document.getElementById('new-cab-token').value = '';
+        loadTokenList(); loadCabinets();
+      } else setStatus('❌ ' + (r && r.message || 'Ошибка'), 'error');
+    })
+    .withFailureHandler(function(e) { setStatus('❌ ' + e.message, 'error'); })
+    .addApiKeyFromSidebar(name, token);
+}
+
+function removeApiKey(row, name) {
+  if (!confirm('Удалить кабинет "' + name + '"?')) return;
+  setStatus('<span class="spinner"></span> Удаление...', 'loading');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.ok) { setStatus('✅ ' + r.message, 'ok'); loadTokenList(); loadCabinets(); }
+      else setStatus('❌ ' + (r && r.message || 'Ошибка'), 'error');
+    })
+    .withFailureHandler(function(e) { setStatus('❌ ' + e.message, 'error'); })
+    .removeApiKeyFromSidebar(row);
+}
+
+function validateToken() {
+  var token = document.getElementById('new-cab-token').value.trim();
+  if (!token) { setStatus('⚠️ Введите токен', 'error'); return; }
+  setStatus('<span class="spinner"></span> Проверка...', 'loading');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.ok) setStatus('✅ ' + r.message, 'ok');
+      else setStatus('❌ ' + (r && r.message || 'Невалиден'), 'error');
+    })
+    .withFailureHandler(function(e) { setStatus('❌ ' + e.message, 'error'); })
+    .validateApiToken(token);
+}
+
+// ═══════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════
+var SETTINGS_META = {
+  MAX_PAGES_PER_RUN:  { label: 'Макс. страниц за запуск',  desc: 'Макс. страниц пагинации за один запуск', group: 'Общие', type: 'number' },
+  ORDERS_DATE_FROM:   { label: 'Заказы: дата с',           desc: 'Загружать заказы начиная с этой даты',   group: 'Заказы и Продажи', type: 'date' },
+  SALES_DATE_FROM:    { label: 'Продажи: дата с',          desc: 'Загружать продажи начиная с этой даты',  group: 'Заказы и Продажи', type: 'date' },
+  FINANCE_DATE_FROM:  { label: 'Финансы: период с',        desc: 'Начало финансового периода',  group: 'Финансы',  type: 'date' },
+  FINANCE_DATE_TO:    { label: 'Финансы: период по',       desc: 'Конец финансового периода',   group: 'Финансы',  type: 'date' },
+  FINANCE_PERIOD:     { label: 'Финансы: детализация',     desc: 'Группировка по неделям или дням', group: 'Финансы', type: 'select', options: ['weekly','daily'] },
+  SUPPLIES_DATE_FROM: { label: 'Поставки: дата с',         desc: 'Начало периода поставок',     group: 'Поставки', type: 'date' },
+  SUPPLIES_DATE_TO:   { label: 'Поставки: дата по',        desc: 'Конец периода поставок',      group: 'Поставки', type: 'date' },
+  SUPPLIES_DATE_TYPE: { label: 'Поставки: тип даты',       desc: 'По какой дате фильтровать',   group: 'Поставки', type: 'select', options: ['factDate','createDate','supplyDate'] },
+  SUPPLIES_STATUS_IDS:{ label: 'Поставки: статусы',        desc: 'ID статусов через запятую (пусто = все)', group: 'Поставки' },
+  SUPPLIES_LIMIT:     { label: 'Поставки: лимит',          desc: 'Записей за один запрос (макс. 1000)',     group: 'Поставки', type: 'number' },
+  STOCKS_WAREHOUSE_IDS:{ label: 'Склады: ID',              desc: 'ID складов через запятую (пусто = все)',  group: 'Остатки' },
+  PROMO_DATE_FROM:    { label: 'Реклама: дата с',          desc: 'Начало периода затрат на рекламу',   group: 'Продвижение', type: 'date' },
+  PROMO_DATE_TO:      { label: 'Реклама: дата по',         desc: 'Конец периода затрат на рекламу',    group: 'Продвижение', type: 'date' }
+};
+
+function loadSettingsPage() {
+  var form = document.getElementById('p-settings-form');
+  form.innerHTML = '<span class="muted">Загрузка...</span>';
+  google.script.run
+    .withSuccessHandler(function(data) {
+      if (!data || !data.settings) return;
+      currentSettings = data.settings;
+      renderSettingsForm(data.settings);
+    })
+    .withFailureHandler(function(e) { form.innerHTML = '<span style="color:red">Ошибка: ' + esc(e.message) + '</span>'; })
+    .getSidebarData();
+}
+
+function renderSettingsForm(settings) {
+  var form = document.getElementById('p-settings-form');
+  var groups = {};
+  Object.keys(SETTINGS_META).forEach(function(k) {
+    var m = SETTINGS_META[k];
+    if (!groups[m.group]) groups[m.group] = [];
+    groups[m.group].push(k);
+  });
+
+  var html = '<div class="grid-2">';
+  var groupKeys = Object.keys(groups);
+
+  groupKeys.forEach(function(group, gi) {
+    html += '<div>';
+    html += '<div class="form-section-title">' + esc(group) + '</div>';
+    groups[group].forEach(function(k) {
+      var m = SETTINGS_META[k];
+      var val = settings[k] !== undefined ? settings[k] : '';
+      html += '<div class="form-group"><label>' + esc(m.label) + '</label>';
+      if (m.desc) html += '<div class="desc">' + esc(m.desc) + '</div>';
+      if (m.type === 'select') {
+        html += '<select id="setting-' + k + '">';
+        m.options.forEach(function(o) {
+          html += '<option value="' + o + '"' + (o === val ? ' selected' : '') + '>' + o + '</option>';
+        });
+        html += '</select>';
+      } else if (m.type === 'date') {
+        html += '<input type="date" id="setting-' + k + '" value="' + escAttr(val) + '">';
+      } else if (m.type === 'number') {
+        html += '<input type="number" id="setting-' + k + '" value="' + escAttr(val) + '" min="1">';
+      } else {
+        html += '<input type="text" id="setting-' + k + '" value="' + escAttr(val) + '">';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    // After every 2 groups, close+open grid for balance
+    if (gi % 2 === 1 && gi < groupKeys.length - 1) {
+      html += '</div><div class="grid-2">';
+    }
+  });
+  html += '</div>';
+  form.innerHTML = html;
+}
+
+function saveSettings() {
+  var s = {};
+  Object.keys(SETTINGS_META).forEach(function(k) {
+    var el = document.getElementById('setting-' + k);
+    if (el) s[k] = el.value;
+  });
+  setStatus('<span class="spinner"></span> Сохранение...', 'loading');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.ok) setStatus('✅ Настройки сохранены', 'ok');
+      else setStatus('❌ ' + (r && r.message || 'Ошибка'), 'error');
+    })
+    .withFailureHandler(function(e) { setStatus('❌ ' + e.message, 'error'); })
+    .saveSettingsFromSidebar(s);
+}
+
+// ═══════════════════════════════════════════════════════
+// DOCS
+// ═══════════════════════════════════════════════════════
+function loadDocs() {
+  if (docsLoaded) return;
+  var el = document.getElementById('p-docs-container');
+
+  google.script.run
+    .withSuccessHandler(function(schemas) {
+      if (!schemas) { el.innerHTML = '<span class="muted">Не удалось загрузить</span>'; return; }
+      docsLoaded = true;
+      var html = '';
+      Object.keys(schemas).forEach(function(sheetName) {
+        var s = schemas[sheetName];
+        html += '<div class="doc-sheet" onclick="this.classList.toggle(\'open\')">';
+        html += '<div class="doc-sheet-header">'
+          + '<span>' + esc(sheetName) + ' (' + s.keys.length + ' столбцов)</span>'
+          + '<span>▸</span></div>';
+        html += '<div class="doc-sheet-body"><table class="tbl">';
+        html += '<thead><tr><th>Столбец</th><th>Название</th><th>Описание</th></tr></thead><tbody>';
+        s.keys.forEach(function(key) {
+          html += '<tr><td class="mono">' + esc(key) + '</td>'
+            + '<td>' + esc(s.titles[key] || key) + '</td>'
+            + '<td class="muted">' + esc(s.desc[key] || '—') + '</td></tr>';
+        });
+        html += '</tbody></table></div></div>';
+      });
+      el.innerHTML = html;
+    })
+    .withFailureHandler(function(e) {
+      el.innerHTML = '<span style="color:red">Ошибка: ' + esc(e.message) + '</span>';
+    })
+    .getSidebarSchemas();
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+function esc(str) {
+  var d = document.createElement('div');
+  d.appendChild(document.createTextNode(str || ''));
+  return d.innerHTML;
+}
+function escAttr(str) { return String(str || '').replace(/"/g, '&quot;'); }
+
+function refreshDashboard() { loadSheetsData(); loadCabinets(); }
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+loadSheetsData();
+loadCabinets();
+</script>
+</body>
+</html>

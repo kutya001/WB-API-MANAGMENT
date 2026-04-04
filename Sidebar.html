@@ -19,20 +19,32 @@
     background: linear-gradient(135deg, #2d5be3, #1a3ab8);
     color: #fff;
     padding: 14px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   .header h1 { font-size: 15px; font-weight: 700; letter-spacing: 0.3px; }
   .header .sub { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+  .header .manager-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .header .manager-btn:hover { background: rgba(255,255,255,0.35); }
 
   /* Tabs */
   .tabs {
     display: flex;
     background: #fff;
     border-bottom: 2px solid #e8eaf6;
-    flex-wrap: wrap;
   }
   .tab {
     flex: 1;
-    min-width: 0;
     padding: 9px 4px;
     font-size: 11px;
     text-align: center;
@@ -120,13 +132,14 @@
   }
   @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
 
-  /* Status badge */
+  /* Badge */
   .badge {
     margin-left: auto;
     font-size: 10px;
     padding: 2px 7px;
     border-radius: 20px;
     font-weight: 600;
+    flex-shrink: 0;
   }
   .badge-ok    { background: #e8f5e9; color: #2e7d32; }
   .badge-empty { background: #fff3e0; color: #e65100; }
@@ -148,7 +161,6 @@
   .status-bar.loading { color: #1565c0; background: #e3f2fd; }
   .status-bar.idle    { color: #666; }
 
-  /* Spinner */
   .spinner {
     display: inline-block;
     width: 11px; height: 11px;
@@ -165,13 +177,14 @@
   .sheets-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
   .sheets-table th {
     background: #2d5be3; color: #fff;
-    padding: 5px 8px; text-align: left; font-weight: 600;
+    padding: 5px 6px; text-align: left; font-weight: 600;
   }
-  .sheets-table td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+  .sheets-table td { padding: 4px 6px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
   .sheets-table tr:hover td { background: #f5f7ff; }
   .sheets-table .rows-num { text-align: right; color: #666; }
-  .sheets-table .sheet-link { color: #2d5be3; text-decoration: none; }
+  .sheets-table .sheet-link { color: #2d5be3; text-decoration: none; font-size: 10.5px; }
   .sheets-table .sheet-link:hover { text-decoration: underline; }
+  .sheets-table .updated { font-size: 9.5px; color: #888; }
 
   /* Settings form */
   .form-group { margin-bottom: 10px; }
@@ -203,7 +216,6 @@
   }
   input[type="date"] { font-family: inherit; }
 
-  /* Cabinet checkboxes */
   .cabinet-list { margin: 6px 0 10px; }
   .cabinet-item {
     display: flex; align-items: center; gap: 6px;
@@ -213,7 +225,18 @@
     width: auto; accent-color: #2d5be3;
   }
 
-  /* Docs */
+  /* Help table */
+  .help-table { width: 100%; border-collapse: collapse; font-size: 10.5px; margin-top: 4px; }
+  .help-table th {
+    background: #e8eaf6; color: #1a3ab8;
+    padding: 4px 6px; text-align: left; font-weight: 600;
+    position: sticky; top: 0;
+  }
+  .help-table td { padding: 3px 6px; border-bottom: 1px solid #f0f0f0; }
+  .help-table .col-key { font-family: monospace; color: #555; font-size: 10px; }
+  .help-table .col-title { font-weight: 500; }
+  .help-table .col-desc { color: #666; font-size: 10px; }
+
   .doc-item {
     background: #fff;
     border: 1px solid #e8eaf6;
@@ -225,23 +248,11 @@
     font-size: 12px; font-weight: 700; color: #2d5be3;
     margin-bottom: 5px; cursor: pointer;
   }
-  .doc-item p  { font-size: 11px; color: #555; line-height: 1.5; }
-  .doc-item .field-list { margin-top: 6px; }
-  .doc-item .field-list li {
-    font-size: 10.5px; color: #333;
-    list-style: none;
-    padding: 2px 0;
-    border-bottom: 1px solid #f5f5f5;
-    display: flex; gap: 6px;
-  }
-  .doc-item .field-list li .key   { color: #555; font-family: monospace; min-width: 100px; flex-shrink: 0; }
-  .doc-item .field-list li .title { color: #1a1a2e; font-weight: 500; }
+  .doc-item p { font-size: 11px; color: #555; line-height: 1.5; }
 
   .pb-60 { padding-bottom: 60px; }
 
-  /* Responsive */
   @media (max-width: 400px) {
-    .tabs { font-size: 10px; }
     .tab { padding: 7px 2px; font-size: 10px; }
     .btn { padding: 7px 10px; font-size: 11px; }
     .header h1 { font-size: 14px; }
@@ -251,19 +262,21 @@
 <body>
 
 <div class="header">
-  <h1>🛍️ WB Учёт</h1>
-  <div class="sub" id="header-sub">Загрузка...</div>
+  <div>
+    <h1>🛍️ WB Учёт</h1>
+    <div class="sub" id="header-sub">Загрузка...</div>
+  </div>
+  <button class="manager-btn" onclick="openManager()">🌐 Менеджер</button>
 </div>
 
 <div class="tabs">
   <div class="tab active" data-tab="actions">⚡ Действия</div>
-  <div class="tab" data-tab="sheets">📋 Листы</div>
   <div class="tab" data-tab="settings">⚙️ Настройки</div>
   <div class="tab" data-tab="docs">📖 Справка</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- TAB: ДЕЙСТВИЯ -->
+<!-- TAB: ДЕЙСТВИЯ (объединено с ЛИСТЫ) -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="tab-actions" class="content active pb-60">
 
@@ -278,34 +291,6 @@
     <button class="btn btn-secondary" onclick="saveCabinets()" style="margin-bottom:10px">
       <span class="icon">💾</span> Сохранить выбор кабинетов
     </button>
-  </div>
-
-  <!-- Управление токенами -->
-  <div class="section-title section-toggle" onclick="toggleSection(this)">
-    🔑 Управление токенами <span class="arrow">▼</span>
-  </div>
-  <div class="section-body">
-    <div id="token-list" style="margin-bottom:8px">
-      <span style="color:#888;font-size:11px">Загрузка...</span>
-    </div>
-    <div style="border:1px solid #e8eaf6;border-radius:7px;padding:8px;margin-bottom:6px;background:#fff">
-      <div class="form-group" style="margin-bottom:6px">
-        <label>Название кабинета</label>
-        <input type="text" id="new-cab-name" placeholder="Мой магазин">
-      </div>
-      <div class="form-group" style="margin-bottom:6px">
-        <label>API Токен</label>
-        <input type="password" id="new-cab-token" placeholder="eyJhbGciOi...">
-      </div>
-      <div style="display:flex;gap:4px">
-        <button class="btn btn-primary" onclick="addApiKey()" style="flex:1">
-          <span class="icon">➕</span> Добавить
-        </button>
-        <button class="btn btn-secondary" onclick="validateToken()" style="flex:0 0 auto">
-          <span class="icon">🔍</span> Проверить
-        </button>
-      </div>
-    </div>
   </div>
 
   <!-- Полное обновление -->
@@ -412,7 +397,26 @@
     </button>
   </div>
 
-  <!-- Настройка -->
+  <!-- Состояние листов -->
+  <div class="section-title section-toggle" onclick="toggleSection(this)">
+    📋 Состояние листов <span class="arrow">▼</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:10px;color:#888;margin-bottom:4px">Нажмите на лист, чтобы перейти к нему</p>
+    <table class="sheets-table">
+      <thead>
+        <tr><th>Лист</th><th style="text-align:right">Строк</th><th>Обновлён</th></tr>
+      </thead>
+      <tbody id="sheets-tbody">
+        <tr><td colspan="3" style="color:#888;padding:12px 8px">Загрузка...</td></tr>
+      </tbody>
+    </table>
+    <button class="btn btn-secondary" onclick="loadSheetsData()" style="margin-top:6px">
+      <span class="icon">🔄</span> Обновить статус
+    </button>
+  </div>
+
+  <!-- Система -->
   <div class="section-title section-toggle" onclick="toggleSection(this)">
     🛠️ Система <span class="arrow">▼</span>
   </div>
@@ -430,29 +434,36 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- TAB: ЛИСТЫ (с навигацией) -->
-<!-- ═══════════════════════════════════════════════════════ -->
-<div id="tab-sheets" class="content pb-60">
-  <div class="section-title">Состояние листов</div>
-  <p style="font-size:10px;color:#888;margin-bottom:6px">Нажмите на название листа, чтобы перейти к нему</p>
-  <table class="sheets-table">
-    <thead>
-      <tr><th>Лист</th><th style="text-align:right">Строк</th></tr>
-    </thead>
-    <tbody id="sheets-tbody">
-      <tr><td colspan="2" style="color:#888;padding:12px 8px">Загрузка...</td></tr>
-    </tbody>
-  </table>
-  <br>
-  <button class="btn btn-secondary" onclick="loadSheetsData()">
-    <span class="icon">🔄</span> Обновить статус
-  </button>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════ -->
-<!-- TAB: НАСТРОЙКИ -->
+<!-- TAB: НАСТРОЙКИ (включая токены) -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="tab-settings" class="content pb-60">
+
+  <!-- Управление токенами -->
+  <div class="section-title">🔑 API Токены</div>
+  <div id="token-list" style="margin-bottom:8px">
+    <span style="color:#888;font-size:11px">Загрузка...</span>
+  </div>
+  <div style="border:1px solid #e8eaf6;border-radius:7px;padding:8px;margin-bottom:12px;background:#fff">
+    <div class="form-group" style="margin-bottom:6px">
+      <label>Название кабинета</label>
+      <input type="text" id="new-cab-name" placeholder="Мой магазин">
+    </div>
+    <div class="form-group" style="margin-bottom:6px">
+      <label>API Токен</label>
+      <input type="password" id="new-cab-token" placeholder="eyJhbGciOi...">
+    </div>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-primary" onclick="addApiKey()" style="flex:1">
+        <span class="icon">➕</span> Добавить
+      </button>
+      <button class="btn btn-secondary" onclick="validateToken()" style="flex:0 0 auto">
+        <span class="icon">🔍</span> Проверить
+      </button>
+    </div>
+  </div>
+
+  <!-- Параметры -->
+  <div class="section-title">📋 Параметры загрузки</div>
   <div id="settings-form">
     <div style="color:#888;font-size:11px;padding:10px 0">Загрузка настроек...</div>
   </div>
@@ -464,10 +475,13 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- TAB: СПРАВКА (авто из SHEET_SCHEMAS) -->
+<!-- TAB: СПРАВКА -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="tab-docs" class="content pb-60">
   <div class="section-title">Листы и поля</div>
+  <p style="font-size:10px;color:#888;margin-bottom:8px">
+    Нажмите на название листа, чтобы развернуть описание столбцов
+  </p>
   <div id="docs-container">
     <div style="color:#888;font-size:11px;padding:10px 0">Загрузка справки...</div>
   </div>
@@ -476,13 +490,14 @@
   <div class="doc-item">
     <h3>Категории токенов</h3>
     <p>Разные методы требуют разные категории токена:</p>
-    <ul class="field-list">
-      <li><span class="key">Контент</span><span class="title">Артикулы (/content/v2/...)</span></li>
-      <li><span class="key">Статистика</span><span class="title">Заказы, продажи, финансы</span></li>
-      <li><span class="key">Поставки FBW</span><span class="title">Поставки (/api/v1/supplies/...)</span></li>
-      <li><span class="key">Финансы</span><span class="title">Баланс (/api/v1/account/balance)</span></li>
-      <li><span class="key">Продвижение</span><span class="title">Бюджеты, затраты на рекламу (/adv/v1/...)</span></li>
-    </ul>
+    <table class="help-table" style="margin-top:6px">
+      <tr><th>Категория</th><th>Назначение</th></tr>
+      <tr><td>Контент</td><td>Артикулы, карточки (/content/v2/...)</td></tr>
+      <tr><td>Статистика</td><td>Заказы, продажи, финансовый отчёт</td></tr>
+      <tr><td>Поставки FBW</td><td>Поставки, детали (/api/v1/supplies/...)</td></tr>
+      <tr><td>Финансы</td><td>Баланс (/api/v1/account/balance)</td></tr>
+      <tr><td>Продвижение</td><td>Бюджеты, затраты на рекламу (/adv/v1/...)</td></tr>
+    </table>
   </div>
 </div>
 
@@ -499,6 +514,11 @@
   let runningFunc = null;
   let currentSettings = {};
 
+  // ── Открыть WB Менеджер ───────────────────────────────
+  function openManager() {
+    google.script.run.showWbManager();
+  }
+
   // ── Переключение вкладок ──────────────────────────────
   document.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', function() {
@@ -508,8 +528,7 @@
       this.classList.add('active');
       document.getElementById('tab-' + name).classList.add('active');
 
-      if (name === 'sheets')   loadSheetsData();
-      if (name === 'settings') loadSettings();
+      if (name === 'settings') { loadSettings(); loadTokenList(); }
       if (name === 'docs')     loadDocs();
     });
   });
@@ -530,7 +549,7 @@
     bar.innerHTML = msg;
   }
 
-  // ── Запуск функции с подсветкой active-кнопки ─────────
+  // ── Запуск функции ────────────────────────────────────
   function run(funcName) {
     if (isRunning) {
       setStatus('⏳ Подождите, уже выполняется: ' + runningFunc, 'loading');
@@ -553,9 +572,7 @@
           setStatus('❌ ' + result.message, 'error');
         } else {
           setStatus('✅ ' + (result && result.message ? result.message : funcName + ' выполнено'), 'ok');
-          if (document.getElementById('tab-sheets').classList.contains('active')) {
-            loadSheetsData();
-          }
+          loadSheetsData();
         }
       })
       .withFailureHandler(function(err) {
@@ -580,7 +597,7 @@
     }
   }
 
-  // ── Навигация к листу (через google.script.run) ───────
+  // ── Навигация к листу ─────────────────────────────────
   function goToSheet(sheetName) {
     google.script.run.goToSheetByName(sheetName);
   }
@@ -618,7 +635,6 @@
       if (ch.checked) selected.push(ch.value);
       else allChecked = false;
     });
-    // Если все выбраны — отправляем пустой массив (= все)
     var toSave = allChecked ? [] : selected;
 
     setStatus('<span class="spinner"></span> Сохранение кабинетов...', 'loading');
@@ -631,10 +647,10 @@
       .saveCabinetsFromSidebar(toSave);
   }
 
-  // ── Загрузить статус листов (с навигацией) ────────────
+  // ── Загрузить статус листов ───────────────────────────
   function loadSheetsData() {
     var tbody = document.getElementById('sheets-tbody');
-    tbody.innerHTML = '<tr><td colspan="2" style="color:#888;padding:10px 8px">Загрузка...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color:#888;padding:10px 8px">Загрузка...</td></tr>';
 
     google.script.run
       .withSuccessHandler(function(data) {
@@ -649,16 +665,18 @@
         Object.keys(sheets).forEach(function(name) {
           var info = sheets[name];
           var badge = info.exists
-            ? '<span class="badge badge-num">' + info.rows + ' стр.</span>'
+            ? '<span class="badge badge-num">' + info.rows + '</span>'
             : '<span class="badge badge-empty">нет</span>';
+          var upd = info.lastUpdate ? '<div class="updated">' + escHtml(String(info.lastUpdate)) + '</div>' : '';
           html += '<tr onclick="goToSheet(\'' + escHtml(name) + '\')">'
             + '<td><span class="sheet-link">' + escHtml(name) + '</span></td>'
-            + '<td class="rows-num">' + badge + '</td></tr>';
+            + '<td class="rows-num">' + badge + '</td>'
+            + '<td>' + upd + '</td></tr>';
         });
         tbody.innerHTML = html;
       })
       .withFailureHandler(function(err) {
-        tbody.innerHTML = '<tr><td colspan="2" style="color:red">Ошибка: ' + escHtml(err.message) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="color:red">Ошибка: ' + escHtml(err.message) + '</td></tr>';
       })
       .getSidebarData();
   }
@@ -681,27 +699,26 @@
   }
 
   var SETTINGS_META = {
-    MAX_PAGES_PER_RUN:  { label: 'Макс. страниц',      desc: 'Для пагинации за один запуск', group: 'Общие', type: 'number' },
-    ORDERS_DATE_FROM:   { label: 'Заказы: дата с',      desc: 'Начало загрузки',   group: 'Заказы',   type: 'date' },
-    SALES_DATE_FROM:    { label: 'Продажи: дата с',     desc: 'Начало загрузки',   group: 'Продажи',  type: 'date' },
-    FINANCE_DATE_FROM:  { label: 'Финансы: с',          desc: 'Период с',          group: 'Финансы',  type: 'date' },
-    FINANCE_DATE_TO:    { label: 'Финансы: по',         desc: 'Период по',         group: 'Финансы',  type: 'date' },
-    FINANCE_PERIOD:     { label: 'Финансы: тип',        desc: 'weekly / daily',    group: 'Финансы',  type: 'select', options: ['weekly', 'daily'] },
-    SUPPLIES_DATE_FROM: { label: 'Поставки: с',         desc: 'Период с',          group: 'Поставки', type: 'date' },
-    SUPPLIES_DATE_TO:   { label: 'Поставки: по',        desc: 'Период по',         group: 'Поставки', type: 'date' },
-    SUPPLIES_DATE_TYPE: { label: 'Поставки: тип даты',  desc: '', group: 'Поставки', type: 'select', options: ['factDate','createDate','supplyDate'] },
-    SUPPLIES_STATUS_IDS:{ label: 'Поставки: статусы',   desc: 'Через запятую: 1,2,3', group: 'Поставки' },
-    SUPPLIES_LIMIT:     { label: 'Поставки: лимит',     desc: 'Макс. 1000', group: 'Поставки', type: 'number' },
-    STOCKS_WAREHOUSE_IDS:{ label: 'Остатки: ID складов', desc: 'Через запятую (пусто = все)', group: 'Остатки' },
-    PROMO_DATE_FROM:    { label: 'Продвижение: с',     desc: 'Период затрат с',    group: 'Продвижение', type: 'date' },
-    PROMO_DATE_TO:      { label: 'Продвижение: по',    desc: 'Период затрат по',   group: 'Продвижение', type: 'date' }
+    MAX_PAGES_PER_RUN:  { label: 'Макс. страниц',      desc: 'Макс. страниц пагинации за один запуск', group: 'Общие', type: 'number' },
+    ORDERS_DATE_FROM:   { label: 'Заказы: дата с',      desc: 'Загружать заказы начиная с этой даты',   group: 'Заказы и Продажи',   type: 'date' },
+    SALES_DATE_FROM:    { label: 'Продажи: дата с',     desc: 'Загружать продажи начиная с этой даты',  group: 'Заказы и Продажи',   type: 'date' },
+    FINANCE_DATE_FROM:  { label: 'Финансы: период с',   desc: 'Начало финансового периода',  group: 'Финансы',  type: 'date' },
+    FINANCE_DATE_TO:    { label: 'Финансы: период по',  desc: 'Конец финансового периода',   group: 'Финансы',  type: 'date' },
+    FINANCE_PERIOD:     { label: 'Финансы: детализация', desc: 'Группировка по неделям или дням',  group: 'Финансы',  type: 'select', options: ['weekly', 'daily'] },
+    SUPPLIES_DATE_FROM: { label: 'Поставки: дата с',    desc: 'Начало периода поставок',     group: 'Поставки', type: 'date' },
+    SUPPLIES_DATE_TO:   { label: 'Поставки: дата по',   desc: 'Конец периода поставок',      group: 'Поставки', type: 'date' },
+    SUPPLIES_DATE_TYPE: { label: 'Поставки: тип даты',  desc: 'По какой дате фильтровать',   group: 'Поставки', type: 'select', options: ['factDate','createDate','supplyDate'] },
+    SUPPLIES_STATUS_IDS:{ label: 'Поставки: статусы',   desc: 'ID статусов через запятую (пусто = все)', group: 'Поставки' },
+    SUPPLIES_LIMIT:     { label: 'Поставки: лимит',     desc: 'Записей за один запрос (макс. 1000)', group: 'Поставки', type: 'number' },
+    STOCKS_WAREHOUSE_IDS:{ label: 'Склады: ID',         desc: 'ID складов через запятую (пусто = все)', group: 'Остатки' },
+    PROMO_DATE_FROM:    { label: 'Реклама: дата с',     desc: 'Начало периода затрат на рекламу',   group: 'Продвижение', type: 'date' },
+    PROMO_DATE_TO:      { label: 'Реклама: дата по',    desc: 'Конец периода затрат на рекламу',    group: 'Продвижение', type: 'date' }
   };
 
   function renderSettingsForm(settings) {
     var form = document.getElementById('settings-form');
     var html = '';
 
-    // Группировка
     var groups = {};
     Object.keys(SETTINGS_META).forEach(function(k) {
       var m = SETTINGS_META[k];
@@ -710,7 +727,7 @@
     });
 
     Object.keys(groups).forEach(function(group) {
-      html += '<div class="section-title">' + escHtml(group) + '</div>';
+      html += '<div class="section-title" style="margin-top:10px">' + escHtml(group) + '</div>';
       groups[group].forEach(function(k) {
         var m   = SETTINGS_META[k];
         var val = settings[k] !== undefined ? settings[k] : '';
@@ -756,7 +773,7 @@
       .saveSettingsFromSidebar(newSettings);
   }
 
-  // ── Справка (авто из SHEET_SCHEMAS) ──────────────────
+  // ── Справка (столбец — название — описание — назначение) ──
   var docsLoaded = false;
 
   function loadDocs() {
@@ -772,15 +789,19 @@
           var s = schemas[sheetName];
           html += '<div class="doc-item">';
           html += '<h3 onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">'
-            + escHtml(sheetName) + ' (' + s.keys.length + ' полей) ▸</h3>';
-          html += '<div style="display:none"><ul class="field-list">';
+            + escHtml(sheetName) + ' (' + s.keys.length + ' столбцов) ▸</h3>';
+          html += '<div style="display:none;overflow-x:auto"><table class="help-table">';
+          html += '<tr><th>Столбец</th><th>Название</th><th>Описание</th></tr>';
           s.keys.forEach(function(key) {
             var title = s.titles[key] || key;
-            var desc  = s.desc[key] || '';
-            html += '<li><span class="key">' + escHtml(key) + '</span>'
-              + '<span class="title">' + escHtml(title) + (desc ? ' — ' + escHtml(desc) : '') + '</span></li>';
+            var desc  = s.desc[key] || '—';
+            html += '<tr>'
+              + '<td class="col-key">' + escHtml(key) + '</td>'
+              + '<td class="col-title">' + escHtml(title) + '</td>'
+              + '<td class="col-desc">' + escHtml(desc) + '</td>'
+              + '</tr>';
           });
-          html += '</ul></div></div>';
+          html += '</table></div></div>';
         });
         container.innerHTML = html;
       })
@@ -814,6 +835,7 @@
           html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;border-bottom:1px solid #f0f0f0">'
             + '<span style="flex:1;font-weight:600">' + escHtml(k.name) + '</span>'
             + '<span style="color:#888;font-size:10px">' + escHtml(k.tokenPreview) + '</span>'
+            + (k.lastUsed ? '<span style="color:#888;font-size:9px" title="Последнее использование">' + escHtml(k.lastUsed) + '</span>' : '')
             + '<button onclick="removeApiKey(' + k.row + ',\'' + escAttr(k.name) + '\')" '
             + 'style="background:none;border:none;color:#d32f2f;cursor:pointer;font-size:13px;padding:2px 4px" title="Удалить">✕</button>'
             + '</div>';
@@ -883,7 +905,6 @@
   // ── Инициализация ────────────────────────────────────
   loadSheetsData();
   loadCabinets();
-  loadTokenList();
 </script>
 </body>
 </html>

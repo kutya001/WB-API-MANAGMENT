@@ -8,16 +8,32 @@
 1. **Категория токена не совпадает с доменом** — самая частая ошибка
    - Пример: токен создан только для «Контент», а запрос идёт на `statistics-api`
    - Проверка: декодировать JWT, посмотреть поле `s` (битовая маска)
-2. **Токен просрочен** — TTL 180 дней
-3. **Лишние символы** — пробелы, переводы строк в хедере
-4. **Неверный формат** — используется `Bearer token` вместо просто `token`
+2. **Категория токена не совпадает с запрашиваемым доменом API** — токен создан с другой категорией, чем требует конкретный домен (например, финансовый токен на домене контента)
+3. **Токен просрочен** — TTL 180 дней
+4. **Лишние символы** — пробелы, переводы строк в хедере
+5. **Неверный формат** — используется `Bearer token` вместо просто `token`
 
 **Решение:**
 ```javascript
-// Проверка токена:
-// GET https://common-api.wildberries.ru/ping
-// Headers: Authorization: <token>
-// 200 = OK, 401 = невалидный
+// Проверка токена (GAS):
+var resp = UrlFetchApp.fetch('https://common-api.wildberries.ru/ping', {
+  headers: { 'Authorization': token },
+  muteHttpExceptions: true
+});
+Logger.log('Ping status: ' + resp.getResponseCode()); // 200 = OK, 401 = невалидный
+Logger.log('Remaining: ' + resp.getHeaders()['x-ratelimit-remaining']);
+```
+
+### 402 Payment Required
+
+**Причина:** Недостаток средств на балансе сервиса из внутреннего Каталога WB. Возникает при попытке использовать платные API-методы (например, продвижение) без достаточного баланса.
+
+**Решение:**
+```javascript
+if (code === 402) {
+  Logger.log('[wbRequest] 402 Payment Required — баланс исчерпан. URL: ' + url);
+  throw new Error('Баланс WB исчерпан (402). Пополните баланс в личном кабинете WB.');
+}
 ```
 
 ### 403 Forbidden
@@ -26,6 +42,17 @@
 1. Токен от удалённого/заблокированного пользователя
 2. Аккаунт заблокирован WB
 3. IP-ограничения (если включены в настройках)
+4. **Использование токена, сгенерированного удалённым пользователем** — токен технически валиден (JWT не истёк), но пользователь, создавший его, удалён из системы
+5. **Попытка вызова методов, требующих подписки «Джем», без активной подписки** — некоторые эндпоинты доступны только при наличии активной подписки «Джем»
+
+**Проверка подписки (GAS):**
+```javascript
+var resp = UrlFetchApp.fetch('https://common-api.wildberries.ru/api/common/v1/subscriptions', {
+  headers: { 'Authorization': token },
+  muteHttpExceptions: true
+});
+Logger.log('Subscriptions: ' + resp.getContentText());
+```
 
 ### 409 Conflict
 
@@ -94,19 +121,29 @@ if (code === 429) {
 ## Отладка в GAS
 
 ```javascript
-// Логирование запроса
+// Полное логирование запроса и заголовков rate-limit
 function debugWbRequest(token, domain, path, params) {
   var url = 'https://' + domain + path;
-  Logger.log('URL: ' + url);
+  var qs = '';
+  if (params) {
+    qs = '?' + Object.keys(params).map(function(k) {
+      return k + '=' + encodeURIComponent(params[k]);
+    }).join('&');
+  }
+
+  Logger.log('URL: ' + url + qs);
   Logger.log('Params: ' + JSON.stringify(params));
 
-  var resp = UrlFetchApp.fetch(url + '?' + buildQS(params), {
+  var resp = UrlFetchApp.fetch(url + qs, {
     headers: { 'Authorization': token },
     muteHttpExceptions: true
   });
 
+  var headers = resp.getHeaders();
   Logger.log('Status: ' + resp.getResponseCode());
-  Logger.log('Headers: ' + JSON.stringify(resp.getHeaders()));
+  Logger.log('X-Ratelimit-Remaining: ' + headers['x-ratelimit-remaining']);
+  Logger.log('X-Ratelimit-Retry: ' + headers['x-ratelimit-retry']);
+  Logger.log('X-Ratelimit-Reset: ' + headers['x-ratelimit-reset']);
   Logger.log('Body (first 500): ' + resp.getContentText().substring(0, 500));
   return resp;
 }

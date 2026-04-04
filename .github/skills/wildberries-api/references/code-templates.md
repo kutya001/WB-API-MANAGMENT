@@ -1,133 +1,7 @@
-# Шаблоны кода для Wildberries API
+# Шаблоны кода для Wildberries API (Google Apps Script)
 
-## Python — WBClient
-
-```python
-import time
-import requests
-
-class WBClient:
-    """Клиент для Wildberries API с retry и rate-limit."""
-
-    def __init__(self, token: str):
-        self.token = token
-        self.session = requests.Session()
-        self.session.headers.update({"Authorization": token})
-
-    def get(self, domain: str, path: str, params: dict = None, retries: int = 3) -> dict:
-        url = f"https://{domain}{path}"
-        for attempt in range(retries):
-            resp = self.session.get(url, params=params)
-            if resp.status_code == 429:
-                wait = int(resp.headers.get("X-Ratelimit-Retry", 60))
-                time.sleep(wait)
-                continue
-            if resp.status_code == 204:
-                return None
-            resp.raise_for_status()
-            return resp.json()
-        raise Exception(f"Rate limit exceeded after {retries} retries: {url}")
-
-    def post(self, domain: str, path: str, json_body: dict = None, retries: int = 3) -> dict:
-        url = f"https://{domain}{path}"
-        for attempt in range(retries):
-            resp = self.session.post(url, json=json_body)
-            if resp.status_code == 429:
-                wait = int(resp.headers.get("X-Ratelimit-Retry", 60))
-                time.sleep(wait)
-                continue
-            if resp.status_code == 204:
-                return None
-            resp.raise_for_status()
-            return resp.json()
-        raise Exception(f"Rate limit exceeded after {retries} retries: {url}")
-
-# Примеры использования:
-
-# Получить остатки
-client = WBClient("your_token")
-stocks = client.get("statistics-api.wildberries.ru", "/api/v1/supplier/stocks", {"dateFrom": "2024-01-01"})
-
-# Получить карточки (cursor-based)
-def get_all_cards(client):
-    all_cards = []
-    cursor = {"limit": 100}
-    while True:
-        body = {"settings": {"cursor": cursor, "filter": {"withPhoto": -1}}}
-        resp = client.post("content-api.wildberries.ru", "/content/v2/get/cards/list", body)
-        cards = resp.get("cards", [])
-        if not cards:
-            break
-        all_cards.extend(cards)
-        cursor = resp["cursor"]
-        cursor["limit"] = 100
-    return all_cards
-
-# Финансовый отчёт (rrd_id pagination)
-def get_finance_report(client, date_from, date_to):
-    all_rows = []
-    rrdid = 0
-    while True:
-        rows = client.get("statistics-api.wildberries.ru",
-            "/api/v5/supplier/reportDetailByPeriod",
-            {"dateFrom": date_from, "dateTo": date_to, "rrdid": rrdid, "limit": 100000})
-        if not rows:
-            break
-        all_rows.extend(rows)
-        rrdid = rows[-1]["rrd_id"]
-    return all_rows
-```
-
----
-
-## JavaScript (fetch) — WBClient
-
-```javascript
-class WBClient {
-  constructor(token) {
-    this.token = token;
-  }
-
-  async get(domain, path, params = {}, retries = 3) {
-    const qs = new URLSearchParams(params).toString();
-    const url = `https://${domain}${path}${qs ? '?' + qs : ''}`;
-    for (let i = 0; i < retries; i++) {
-      const resp = await fetch(url, { headers: { Authorization: this.token } });
-      if (resp.status === 429) {
-        const wait = parseInt(resp.headers.get('X-Ratelimit-Retry') || '60', 10);
-        await new Promise(r => setTimeout(r, wait * 1000));
-        continue;
-      }
-      if (resp.status === 204) return null;
-      if (!resp.ok) throw new Error(`WB API ${resp.status}: ${(await resp.text()).substring(0, 200)}`);
-      return resp.json();
-    }
-    throw new Error(`Rate limit exceeded: ${url}`);
-  }
-
-  async post(domain, path, body = {}, retries = 3) {
-    const url = `https://${domain}${path}`;
-    for (let i = 0; i < retries; i++) {
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { Authorization: this.token, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (resp.status === 429) {
-        const wait = parseInt(resp.headers.get('X-Ratelimit-Retry') || '60', 10);
-        await new Promise(r => setTimeout(r, wait * 1000));
-        continue;
-      }
-      if (resp.status === 204) return null;
-      if (!resp.ok) throw new Error(`WB API ${resp.status}: ${(await resp.text()).substring(0, 200)}`);
-      return resp.json();
-    }
-    throw new Error(`Rate limit exceeded: ${url}`);
-  }
-}
-```
-
----
+> Все шаблоны — исключительно для Google Apps Script (`UrlFetchApp`).
+> GAS имеет лимит выполнения **6 минут** на один вызов — учитывайте это при пагинации с `Utilities.sleep()`.
 
 ## Google Apps Script — паттерн с retry
 
@@ -240,6 +114,89 @@ function loadAllCards(token) {
     cursor.limit = 100;
   }
   return allCards;
+}
+```
+
+---
+
+## Чтение заголовков Rate Limit (GAS)
+
+```javascript
+/**
+ * Читает и логирует заголовки rate-limit из ответа WB API.
+ * Используется для отладки и адаптивного throttling.
+ *
+ * @param {GoogleAppsScript.URL_Fetch.HTTPResponse} resp — ответ UrlFetchApp
+ */
+function logRateLimitHeaders(resp) {
+  var headers = resp.getHeaders();
+  var remaining = headers['x-ratelimit-remaining'];
+  var retry     = headers['x-ratelimit-retry'];
+  var reset     = headers['x-ratelimit-reset'];
+
+  Logger.log('Rate limit — remaining: ' + remaining + ', retry: ' + retry + 's, reset: ' + reset + 's');
+}
+
+/**
+ * Адаптивная задержка: если burst исчерпан — ждём X-Ratelimit-Retry секунд.
+ * Учитывает лимит GAS в 6 минут — если оставшееся время меньше, чем ожидание,
+ * выбрасывает исключение вместо бесконечного sleep.
+ *
+ * @param {GoogleAppsScript.URL_Fetch.HTTPResponse} resp — ответ UrlFetchApp
+ * @param {number} startTime — Date.now() в начале выполнения скрипта
+ */
+function adaptiveSleep(resp, startTime) {
+  var headers   = resp.getHeaders();
+  var remaining = Number(headers['x-ratelimit-remaining']);
+  var retryMs   = Number(headers['x-ratelimit-retry'] || 60) * 1000;
+  var elapsed   = Date.now() - startTime;
+  var GAS_LIMIT = 330000; // 5.5 мин — оставляем запас
+
+  if (remaining <= 0) {
+    if (elapsed + retryMs > GAS_LIMIT) {
+      throw new Error('[adaptiveSleep] Недостаточно времени GAS для ожидания retry (' + retryMs + ' мс). Прервите и перезапустите.');
+    }
+    Utilities.sleep(retryMs);
+  }
+}
+```
+
+---
+
+## Паттерн: безопасная пагинация с контролем времени GAS
+
+```javascript
+/**
+ * Шаблон пагинации с защитой от превышения 6-минутного лимита GAS.
+ * Пригоден для любого типа пагинации (cursor, offset, rrd_id).
+ *
+ * @param {Function} fetchPage — функция (pageState) → { data: [], nextState: any, done: boolean }
+ * @param {*} initialState — начальное состояние пагинации
+ * @param {number} sleepMs — задержка между страницами (мс)
+ * @returns {Object[]} — все собранные строки
+ */
+function paginateWithTimeGuard(fetchPage, initialState, sleepMs) {
+  var startTime = Date.now();
+  var GAS_LIMIT = 330000; // 5.5 мин
+  var all = [];
+  var state = initialState;
+
+  while (true) {
+    if (Date.now() - startTime > GAS_LIMIT) {
+      Logger.log('[paginateWithTimeGuard] Лимит времени GAS, собрано ' + all.length + ' записей');
+      break;
+    }
+
+    var page = fetchPage(state);
+    if (!page.data || page.data.length === 0 || page.done) break;
+
+    all = all.concat(page.data);
+    state = page.nextState;
+
+    if (sleepMs > 0) Utilities.sleep(sleepMs);
+  }
+
+  return all;
 }
 ```
 

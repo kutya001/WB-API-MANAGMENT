@@ -72,8 +72,13 @@ function wbRequest(apiType, endpoint, method, payload, apiKey, queryParams) {
     throw new Error(`[wbRequest] Сетевая ошибка при запросе к ${url}: ${networkErr.message}`);
   }
 
-  const status = response.getResponseCode();
-  const text   = response.getContentText();
+  const status  = response.getResponseCode();
+  const text    = response.getContentText();
+  const headers = response.getHeaders();
+
+  // Чтение заголовков rate-limit
+  const remaining = headers['x-ratelimit-remaining'];
+  const retryAfter = headers['x-ratelimit-retry'];
 
   // 204 — нет данных (нормально для пагинации)
   if (status === 204) return null;
@@ -88,9 +93,31 @@ function wbRequest(apiType, endpoint, method, payload, apiKey, queryParams) {
     }
   }
 
+  // 402 — баланс исчерпан (фатальная ошибка, дальнейшие запросы бесполезны)
+  if (status === 402) {
+    const msg = `[wbRequest] Баланс WB исчерпан (402). Пополните баланс в личном кабинете WB. URL: ${url}`;
+    Logger.log(msg);
+    throw new Error(msg);
+  }
+
+  // 409 — ошибка сохранения, пессимизация (1 запрос 409 = 5–10 обычных запросов в квоте)
+  if (status === 409) {
+    const penalty = Number(retryAfter || 2) * 1000 * 3; // множитель x3 для пессимизации
+    Logger.log(`[wbRequest] 409 Conflict — пессимизация. Remaining: ${remaining}, sleep: ${penalty} мс. URL: ${url}`);
+    if (remaining !== undefined && Number(remaining) <= 0 && retryAfter) {
+      Utilities.sleep(Number(retryAfter) * 1000);
+    } else {
+      Utilities.sleep(penalty);
+    }
+    throw new Error(`[wbRequest] HTTP 409 от ${url}: ${text.substring(0, 500)}`);
+  }
+
   // 429 — превышен лимит запросов
   if (status === 429) {
-    throw new Error(`[wbRequest] Лимит запросов WB (429). Подождите 1-2 минуты. URL: ${url}`);
+    const waitSec = Number(retryAfter || 60);
+    Logger.log(`[wbRequest] 429 Rate Limit. Remaining: ${remaining}, retry через ${waitSec} сек. URL: ${url}`);
+    Utilities.sleep(waitSec * 1000);
+    throw new Error(`[wbRequest] Лимит запросов WB (429). Подождите ${waitSec} секунд. URL: ${url}`);
   }
 
   // 401 / 403 — проблема с токеном

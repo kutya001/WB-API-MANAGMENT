@@ -186,8 +186,37 @@
 
 | Метод | Эндпоинт | Описание |
 |---|---|---|
-| GET | `/ping` | Проверка токена |
+| GET | `/ping` | Проверка подключения к WB API |
 | GET | `/api/v1/tariffs/box` | Тарифы на короб (FBS/DBS) |
 | GET | `/api/v1/tariffs/pallet` | Тарифы на палету |
 | GET | `/api/v1/tariffs/return` | Тарифы на возвраты |
 | GET | `/api/v1/tariffs/commission` | Комиссии по категориям |
+
+---
+
+## News API (`common-api.wildberries.ru`)
+
+| Метод | Эндпоинт | Описание |
+|---|---|---|
+| GET | `/api/communications/v2/news` | Получение новостей портала |
+
+---
+
+## Seller Info API (`common-api.wildberries.ru`)
+
+| Метод | Эндпоинт | Описание |
+|---|---|---|
+| GET | `/api/v1/seller-info` | Данные профиля продавца |
+| GET | `/api/common/v1/rating` | Рейтинг продавца |
+| GET | `/api/common/v1/subscriptions` | Статус подписки «Джем» |
+
+---
+
+## User Management API (`common-api.wildberries.ru`)
+
+| Метод | Эндпоинт | Описание |
+|---|---|---|
+| POST | `/api/v1/invite` | Создать приглашение для нового пользователя |
+| GET | `/api/v1/users` | Список пользователей кабинета |
+| PUT | `/api/v1/users/access` | Редактирование прав доступа пользователя |
+| DELETE | `/api/v1/user` | Удаление пользователя |
