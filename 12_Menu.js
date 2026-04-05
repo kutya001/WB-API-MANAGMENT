@@ -43,6 +43,7 @@ function onOpen() {
     .addItem('📘 Обновить МЕТАДАННЫЕ',           'initMetadataSheet')
     .addItem('📊 Открыть управление (UI)',        'showSidebar')
     .addItem('🌐 WB Менеджер (полный интерфейс)', 'showWbManager')
+    .addItem('↕️ Упорядочить листы',              'reorderSheets')
     .addSeparator()
 
     // --- Артикулы ---
@@ -220,6 +221,70 @@ function getSidebarSchemas() {
 }
 
 /**
+ * Возвращает данные листа для просмотра в WB Менеджере.
+ * Пагинация на стороне сервера для защиты от перегрузки.
+ *
+ * @param {string} sheetName — имя листа из APP.sheets
+ * @param {number} [page]    — номер страницы (1-based), по умолчанию 1
+ * @param {number} [pageSize] — строк на страницу, по умолчанию 100
+ * @param {string} [search]  — строка поиска (ищет по всем колонкам)
+ * @returns {{ headers: string[], rows: string[][], total: number, page: number, pageSize: number, totalPages: number }}
+ */
+function getSheetDataForViewer(sheetName, page, pageSize, search) {
+  const ss = SpreadsheetApp.getActive();
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { headers: [], rows: [], total: 0, page: 1, pageSize: 100, totalPages: 0 };
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 1) return { headers: [], rows: [], total: 0, page: 1, pageSize: 100, totalPages: 0 };
+
+  const headers = data[0].map(h => String(h));
+  page = Math.max(1, page || 1);
+  pageSize = Math.min(500, Math.max(10, pageSize || 100));
+
+  // Конвертируем все значения в строки для передачи в HTML
+  var allRows = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var hasData = false;
+    var strRow = row.map(function(v) {
+      if (v === null || v === undefined) return '';
+      if (v instanceof Date) return formatDateRu(v);
+      var s = String(v);
+      if (s) hasData = true;
+      return s;
+    });
+    if (hasData) allRows.push(strRow);
+  }
+
+  // Поиск
+  if (search && search.trim()) {
+    var q = search.trim().toLowerCase();
+    allRows = allRows.filter(function(row) {
+      return row.some(function(cell) { return cell.toLowerCase().indexOf(q) !== -1; });
+    });
+  }
+
+  var total = allRows.length;
+  var totalPages = Math.max(1, Math.ceil(total / pageSize));
+  page = Math.min(page, totalPages);
+  var start = (page - 1) * pageSize;
+  var pageRows = allRows.slice(start, start + pageSize);
+
+  return { headers: headers, rows: pageRows, total: total, page: page, pageSize: pageSize, totalPages: totalPages };
+}
+
+/**
+ * Возвращает список всех листов (имена) для выбора в Data Viewer.
+ * @returns {string[]}
+ */
+function getSheetNamesForViewer() {
+  var names = [];
+  Object.keys(APP.sheets).forEach(function(key) { names.push(APP.sheets[key]); });
+  return names;
+}
+
+/**
  * Навигация к листу по имени. Вызывается из Sidebar при клике на лист.
  * @param {string} sheetName
  */
@@ -247,6 +312,7 @@ function runFromSidebar(funcName) {
     'initManualSheet_Products', 'initManualSheet_Planning',
     'initManualSheet_SewingLaunch', 'initManualSheet_SewingOutput',
     'initManualSheet_Fulfillment', 'initAllManualSheets',
+    'reorderSheets',
     'clearLogs', 'loadAll',
     'loadAllGoods', 'loadAllOrdersSales', 'loadAllSupplies'
   ];
@@ -477,3 +543,48 @@ function initManualSheet_Planning()      { return initManualSheet(APP.sheets.PLA
 function initManualSheet_SewingLaunch()  { return initManualSheet(APP.sheets.SEWING_LAUNCH); }
 function initManualSheet_SewingOutput()  { return initManualSheet(APP.sheets.SEWING_OUTPUT); }
 function initManualSheet_Fulfillment()   { return initManualSheet(APP.sheets.FULFILLMENT); }
+
+// ============================================================
+// УПОРЯДОЧИВАНИЕ ЛИСТОВ
+// ============================================================
+
+/**
+ * Располагает листы в логическом порядке бизнес-процесса.
+ * Листы не из APP.sheets остаются в конце.
+ * @returns {{ ok: boolean, message: string }}
+ */
+function reorderSheets() {
+  const ss = SpreadsheetApp.getActive();
+  const desiredOrder = [
+    APP.sheets.PRODUCTS,
+    APP.sheets.PLANNING,
+    APP.sheets.SEWING_LAUNCH,
+    APP.sheets.SEWING_OUTPUT,
+    APP.sheets.FULFILLMENT,
+    APP.sheets.ARTICLES,
+    APP.sheets.ARTICLE_BARCODES,
+    APP.sheets.SUPPLIES,
+    APP.sheets.SUPPLY_DETAILS,
+    APP.sheets.ORDERS,
+    APP.sheets.SALES,
+    APP.sheets.AD_EXPENSES,
+    APP.sheets.STOCKS_CALC,
+    APP.sheets.API,
+    APP.sheets.SETTINGS,
+    APP.sheets.METADATA,
+    APP.sheets.LOGS
+  ];
+
+  let pos = 0;
+  desiredOrder.forEach(name => {
+    const sheet = ss.getSheetByName(name);
+    if (sheet) {
+      ss.setActiveSheet(sheet);
+      ss.moveActiveSheet(pos + 1);
+      pos++;
+    }
+  });
+
+  SpreadsheetApp.getActive().toast('Листы упорядочены', '✅ Готово', 3);
+  return { ok: true, message: 'Листы расположены в логическом порядке.' };
+}

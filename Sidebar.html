@@ -91,6 +91,89 @@
   .section-body { overflow: hidden; transition: max-height 0.25s ease; }
   .section-body.collapsed { max-height: 0 !important; padding: 0; }
 
+  /* Action cards (screenshot layout) */
+  .action-card {
+    background: #fff;
+    border: 1px solid #e0e4f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    transition: box-shadow 0.15s;
+  }
+  .action-card:hover { box-shadow: 0 2px 8px rgba(45,91,227,0.08); }
+  .action-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 7px;
+  }
+  .action-card-sheet {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a1a2e;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+  .action-card-sheet:hover { color: #2d5be3; text-decoration: underline; }
+  .action-card-rows {
+    font-size: 11px;
+    font-weight: 700;
+    color: #1565c0;
+    background: #e3f2fd;
+    padding: 2px 8px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .action-card-rows.empty { background: #fff3e0; color: #e65100; }
+  .action-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .action-card-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border: 1px solid #c5d2f8;
+    border-radius: 6px;
+    background: #f0f4ff;
+    color: #2d5be3;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .action-card-btn:hover { background: #e0e8ff; }
+  .action-card-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .action-card-btn.running { background: #e3f2fd; border-color: #90caf9; color: #1565c0; }
+  .action-card-btn.primary { background: #2d5be3; color: #fff; border-color: #2d5be3; }
+  .action-card-btn.primary:hover { background: #1a3ab8; }
+  .action-card-btn.group { background: #e8eaf6; color: #1a3ab8; border-color: #c5d2f8; }
+  .action-card-btn.group:hover { background: #d0d7f7; }
+  .action-card-btn.danger { background: #fff0f0; color: #d32f2f; border-color: #ffcdd2; }
+  .action-card-btn.danger:hover { background: #ffe0e0; }
+  .action-card-btn.success { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
+  .action-card-btn.success:hover { background: #d4edda; }
+  .action-card-updated {
+    font-size: 10px;
+    color: #888;
+    text-align: right;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Buttons */
   .btn {
     display: flex;
@@ -276,7 +359,7 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- TAB: ДЕЙСТВИЯ (объединено с ЛИСТЫ) -->
+<!-- TAB: ДЕЙСТВИЯ (карточный интерфейс) -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="tab-actions" class="content active pb-60">
 
@@ -295,24 +378,42 @@
 
   <!-- Полное обновление -->
   <div class="section-title">🚀 Полное обновление</div>
-  <button class="btn btn-primary" data-func="loadAll" onclick="run('loadAll')">
-    <span class="icon">🚀</span> Обновить всё
-  </button>
+  <div style="margin-bottom:8px">
+    <button class="action-card-btn primary" data-func="loadAll" onclick="run('loadAll')" style="width:100%;padding:8px 14px;font-size:12px">
+      <span class="icon">🚀</span> Обновить всё
+    </button>
+  </div>
 
   <!-- Артикулы -->
   <div class="section-title section-toggle" onclick="toggleSection(this)">
     📦 Артикулы <span class="arrow">▼</span>
   </div>
   <div class="section-body">
-    <button class="btn btn-group" data-func="loadAllGoods" onclick="run('loadAllGoods')">
-      <span class="icon">📦</span> Обновить все Артикулы
-    </button>
-    <button class="btn btn-secondary" data-func="loadArticles" onclick="run('loadArticles')">
-      <span class="icon">🔄</span> Артикулы (каталог)
-    </button>
-    <button class="btn btn-secondary" data-func="loadArticleBarcodes" onclick="run('loadArticleBarcodes')">
-      <span class="icon">🔗</span> Артикул-Баркоды
-    </button>
+    <div style="margin-bottom:8px">
+      <button class="action-card-btn group" data-func="loadAllGoods" onclick="run('loadAllGoods')" style="width:100%">
+        <span class="icon">📦</span> Обновить все Артикулы
+      </button>
+    </div>
+    <div class="action-card" data-sheet="📦 Артикулы">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('📦 Артикулы')">📦 Артикулы</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="loadArticles" onclick="run('loadArticles')">🔄 Загрузить</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
+    <div class="action-card" data-sheet="🔗 Баркоды">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('🔗 Баркоды')">🔗 Баркоды</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="loadArticleBarcodes" onclick="run('loadArticleBarcodes')">🔄 Загрузить</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
   </div>
 
   <!-- Поставки FBW -->
@@ -320,15 +421,31 @@
     🚚 Поставки FBW <span class="arrow">▼</span>
   </div>
   <div class="section-body">
-    <button class="btn btn-group" data-func="loadAllSupplies" onclick="run('loadAllSupplies')">
-      <span class="icon">🚚</span> Обновить все Поставки
-    </button>
-    <button class="btn btn-secondary" data-func="loadSupplies" onclick="run('loadSupplies')">
-      <span class="icon">📦</span> Список поставок
-    </button>
-    <button class="btn btn-secondary" data-func="loadSupplyDetails" onclick="run('loadSupplyDetails')">
-      <span class="icon">📋</span> Детализация поставок
-    </button>
+    <div style="margin-bottom:8px">
+      <button class="action-card-btn group" data-func="loadAllSupplies" onclick="run('loadAllSupplies')" style="width:100%">
+        <span class="icon">🚚</span> Обновить все Поставки
+      </button>
+    </div>
+    <div class="action-card" data-sheet="🚚 Поставки">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('🚚 Поставки')">🚚 Поставки</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="loadSupplies" onclick="run('loadSupplies')">🔄 Загрузить</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
+    <div class="action-card" data-sheet="🚚 Поставки детали">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('🚚 Поставки детали')">🚚 Поставки детали</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="loadSupplyDetails" onclick="run('loadSupplyDetails')">🔄 Загрузить</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
   </div>
 
   <!-- Заказы и Продажи -->
@@ -336,15 +453,31 @@
     🛒 Заказы и Продажи <span class="arrow">▼</span>
   </div>
   <div class="section-body">
-    <button class="btn btn-group" data-func="loadAllOrdersSales" onclick="run('loadAllOrdersSales')">
-      <span class="icon">🛒</span> Обновить Заказы + Продажи
-    </button>
-    <button class="btn btn-secondary" data-func="loadOrders" onclick="run('loadOrders')">
-      <span class="icon">📊</span> Заказы
-    </button>
-    <button class="btn btn-secondary" data-func="loadSales" onclick="run('loadSales')">
-      <span class="icon">💰</span> Продажи
-    </button>
+    <div style="margin-bottom:8px">
+      <button class="action-card-btn group" data-func="loadAllOrdersSales" onclick="run('loadAllOrdersSales')" style="width:100%">
+        <span class="icon">🛒</span> Обновить Заказы + Продажи
+      </button>
+    </div>
+    <div class="action-card" data-sheet="🛒 Заказы">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('🛒 Заказы')">🛒 Заказы</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="loadOrders" onclick="run('loadOrders')">🔄 Загрузить</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
+    <div class="action-card" data-sheet="💰 Продажи">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('💰 Продажи')">💰 Продажи</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="loadSales" onclick="run('loadSales')">🔄 Загрузить</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
   </div>
 
   <!-- Реклама -->
@@ -352,9 +485,16 @@
     📣 Реклама <span class="arrow">▼</span>
   </div>
   <div class="section-body">
-    <button class="btn btn-secondary" data-func="loadAdExpenses" onclick="run('loadAdExpenses')">
-      <span class="icon">📣</span> Рекламные расходы
-    </button>
+    <div class="action-card" data-sheet="📣 Реклама">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('📣 Реклама')">📣 Реклама</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="loadAdExpenses" onclick="run('loadAdExpenses')">🔄 Загрузить</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
   </div>
 
   <!-- Расчёты -->
@@ -362,28 +502,16 @@
     📊 Расчёты <span class="arrow">▼</span>
   </div>
   <div class="section-body">
-    <button class="btn btn-success" data-func="buildStocksCalc" onclick="run('buildStocksCalc')">
-      <span class="icon">📊</span> Рассчитать остатки
-    </button>
-  </div>
-
-  <!-- Состояние листов -->
-  <div class="section-title section-toggle" onclick="toggleSection(this)">
-    📋 Состояние листов <span class="arrow">▼</span>
-  </div>
-  <div class="section-body">
-    <p style="font-size:10px;color:#888;margin-bottom:4px">Нажмите на лист, чтобы перейти к нему</p>
-    <table class="sheets-table">
-      <thead>
-        <tr><th>Лист</th><th style="text-align:right">Строк</th><th>Обновлён</th></tr>
-      </thead>
-      <tbody id="sheets-tbody">
-        <tr><td colspan="3" style="color:#888;padding:12px 8px">Загрузка...</td></tr>
-      </tbody>
-    </table>
-    <button class="btn btn-secondary" onclick="loadSheetsData()" style="margin-top:6px">
-      <span class="icon">🔄</span> Обновить статус
-    </button>
+    <div class="action-card" data-sheet="📊 Остатки">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('📊 Остатки')">📊 Остатки</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn success" data-func="buildStocksCalc" onclick="run('buildStocksCalc')">📊 Рассчитать</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
   </div>
 
   <!-- Система -->
@@ -391,6 +519,9 @@
     🛠️ Система <span class="arrow">▼</span>
   </div>
   <div class="section-body">
+    <button class="btn btn-secondary" data-func="reorderSheets" onclick="run('reorderSheets')">
+      <span class="icon">↕️</span> Упорядочить листы
+    </button>
     <button class="btn btn-secondary" data-func="initSettingsSheet" onclick="run('initSettingsSheet')">
       <span class="icon">⚙️</span> Создать лист НАСТРОЙКИ
     </button>
@@ -403,28 +534,65 @@
   </div>
 
   <!-- Ручные листы -->
-  <div class="section-title section-toggle" onclick="toggleSection(this)">
+  <div class="section-title section-toggle collapsed" onclick="toggleSection(this)">
     📝 Ручные листы <span class="arrow">▼</span>
   </div>
-  <div class="section-body">
-    <button class="btn btn-secondary" data-func="initAllManualSheets" onclick="run('initAllManualSheets')">
-      <span class="icon">📝</span> Создать ВСЕ ручные листы
-    </button>
-    <button class="btn btn-secondary" data-func="initManualSheet_Products" onclick="run('initManualSheet_Products')">
-      <span class="icon">🏷️</span> Товары
-    </button>
-    <button class="btn btn-secondary" data-func="initManualSheet_Planning" onclick="run('initManualSheet_Planning')">
-      <span class="icon">📅</span> Планирование
-    </button>
-    <button class="btn btn-secondary" data-func="initManualSheet_SewingLaunch" onclick="run('initManualSheet_SewingLaunch')">
-      <span class="icon">✂️</span> Запуск ШВ
-    </button>
-    <button class="btn btn-secondary" data-func="initManualSheet_SewingOutput" onclick="run('initManualSheet_SewingOutput')">
-      <span class="icon">📦</span> Выпуск ШВ
-    </button>
-    <button class="btn btn-secondary" data-func="initManualSheet_Fulfillment" onclick="run('initManualSheet_Fulfillment')">
-      <span class="icon">📋</span> Фуллфилмент и упаковка
-    </button>
+  <div class="section-body collapsed">
+    <div style="margin-bottom:8px">
+      <button class="action-card-btn group" data-func="initAllManualSheets" onclick="run('initAllManualSheets')" style="width:100%">
+        <span class="icon">📝</span> Создать ВСЕ ручные листы
+      </button>
+    </div>
+    <div class="action-card" data-sheet="1️⃣ Товары">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('1️⃣ Товары')">1️⃣ Товары</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="initManualSheet_Products" onclick="run('initManualSheet_Products')">🏷️ Создать</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
+    <div class="action-card" data-sheet="2️⃣ Планирование">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('2️⃣ Планирование')">2️⃣ Планирование</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="initManualSheet_Planning" onclick="run('initManualSheet_Planning')">📅 Создать</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
+    <div class="action-card" data-sheet="3️⃣ Запуск ШВ">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('3️⃣ Запуск ШВ')">3️⃣ Запуск ШВ</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="initManualSheet_SewingLaunch" onclick="run('initManualSheet_SewingLaunch')">✂️ Создать</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
+    <div class="action-card" data-sheet="4️⃣ Выпуск ШВ">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('4️⃣ Выпуск ШВ')">4️⃣ Выпуск ШВ</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="initManualSheet_SewingOutput" onclick="run('initManualSheet_SewingOutput')">📦 Создать</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
+    <div class="action-card" data-sheet="5️⃣ Фуллфилмент">
+      <div class="action-card-top">
+        <span class="action-card-sheet" onclick="goToSheet('5️⃣ Фуллфилмент')">5️⃣ Фуллфилмент</span>
+        <span class="action-card-rows" data-rows>—</span>
+      </div>
+      <div class="action-card-bottom">
+        <button class="action-card-btn" data-func="initManualSheet_Fulfillment" onclick="run('initManualSheet_Fulfillment')">📋 Создать</button>
+        <span class="action-card-updated" data-updated>—</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -580,7 +748,7 @@
   }
 
   function setAllBtnsDisabled(disabled) {
-    document.querySelectorAll('.btn').forEach(function(b) { b.disabled = disabled; });
+    document.querySelectorAll('.btn, .action-card-btn').forEach(function(b) { b.disabled = disabled; });
   }
 
   function highlightBtn(funcName, active) {
@@ -643,9 +811,6 @@
 
   // ── Загрузить статус листов ───────────────────────────
   function loadSheetsData() {
-    var tbody = document.getElementById('sheets-tbody');
-    tbody.innerHTML = '<tr><td colspan="3" style="color:#888;padding:10px 8px">Загрузка...</td></tr>';
-
     google.script.run
       .withSuccessHandler(function(data) {
         if (!data || !data.sheets) return;
@@ -654,25 +819,30 @@
         var settingsCount = Object.keys(settings).length;
         document.getElementById('header-sub').textContent = 'v3.0 | Настроек: ' + settingsCount;
 
-        var sheets = data.sheets;
-        var html = '';
-        Object.keys(sheets).forEach(function(name) {
-          var info = sheets[name];
-          var badge = info.exists
-            ? '<span class="badge badge-num">' + info.rows + '</span>'
-            : '<span class="badge badge-empty">нет</span>';
-          var upd = info.lastUpdate ? '<div class="updated">' + escHtml(String(info.lastUpdate)) + '</div>' : '';
-          html += '<tr onclick="goToSheet(\'' + escHtml(name) + '\')">'
-            + '<td><span class="sheet-link">' + escHtml(name) + '</span></td>'
-            + '<td class="rows-num">' + badge + '</td>'
-            + '<td>' + upd + '</td></tr>';
-        });
-        tbody.innerHTML = html;
+        // Populate action cards
+        updateActionCards(data.sheets);
       })
       .withFailureHandler(function(err) {
-        tbody.innerHTML = '<tr><td colspan="3" style="color:red">Ошибка: ' + escHtml(err.message) + '</td></tr>';
+        console.error('loadSheetsData error:', err.message);
       })
       .getSidebarData();
+  }
+
+  // ── Обновить карточки действий ──────────────────────────
+  function updateActionCards(sheets) {
+    document.querySelectorAll('.action-card[data-sheet]').forEach(function(card) {
+      var name = card.getAttribute('data-sheet');
+      var info = sheets[name];
+      var rowsEl = card.querySelector('[data-rows]');
+      var updEl = card.querySelector('[data-updated]');
+      if (info && info.exists) {
+        if (rowsEl) { rowsEl.textContent = info.rows; rowsEl.classList.remove('empty'); }
+        if (updEl) updEl.textContent = info.lastUpdate || '—';
+      } else {
+        if (rowsEl) { rowsEl.textContent = 'нет'; rowsEl.classList.add('empty'); }
+        if (updEl) updEl.textContent = '—';
+      }
+    });
   }
 
   // ── Настройки ────────────────────────────────────────

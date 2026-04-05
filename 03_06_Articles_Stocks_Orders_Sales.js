@@ -56,14 +56,16 @@ function loadArticles() {
         const photos  = card.photos || card.mediaFiles || [];
         const mainPic = photos.length ? (photos[0].big || photos[0].tm || '') : '';
 
+        var nmId = card.nmID || '';
         rows.push({
           cabinet:     item.cabinet,
-          nmID:        card.nmID        || '',
+          nmID:        nmId,
           vendorCode:  card.vendorCode  || '',
           brand:       card.brand       || '',
           title:       card.title       || '',
           category:    card.subjectParentName || '',
           subjectName: card.subjectName || '',
+          cardUrl:     nmId ? 'https://www.wildberries.ru/catalog/' + nmId + '/detail.aspx' : '',
           photoUrl:    mainPic,
           updatedAt:   formatDateRu(card.updatedAt)
         });

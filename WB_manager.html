@@ -307,6 +307,144 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ═══════ DATA VIEWER ═══════ */
+  .dv-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .dv-select {
+    padding: 8px 12px;
+    border: 1px solid #dde2f0;
+    border-radius: 7px;
+    font-size: 13px;
+    background: #fff;
+    color: var(--text);
+    min-width: 180px;
+    outline: none;
+  }
+  .dv-select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px #dde8ff; }
+  .dv-search {
+    padding: 8px 12px;
+    border: 1px solid #dde2f0;
+    border-radius: 7px;
+    font-size: 13px;
+    flex: 1;
+    min-width: 140px;
+    outline: none;
+  }
+  .dv-search:focus { border-color: var(--primary); box-shadow: 0 0 0 2px #dde8ff; }
+  .dv-info {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .dv-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #fff;
+  }
+  .dv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .dv-table th {
+    background: var(--primary);
+    color: #fff;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .dv-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dv-table tr:hover td { background: #f8f9ff; }
+  .dv-table tr:nth-child(even) td { background: #fafbff; }
+  .dv-table tr:hover td { background: #eef2ff; }
+  .dv-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .dv-page-btn {
+    padding: 6px 12px;
+    border: 1px solid #dde2f0;
+    border-radius: 6px;
+    background: #fff;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.12s;
+  }
+  .dv-page-btn:hover { background: var(--primary-bg); }
+  .dv-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .dv-page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .dv-page-info { font-size: 12px; color: var(--text-muted); padding: 0 8px; }
+  .dv-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  .dv-loading { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  .dv-page-size {
+    padding: 5px 8px;
+    border: 1px solid #dde2f0;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+    outline: none;
+  }
+
+  /* Mobile cards for data viewer */
+  .dv-cards { display: none; }
+  .dv-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .dv-card-row {
+    display: flex;
+    padding: 3px 0;
+    font-size: 12px;
+    gap: 8px;
+  }
+  .dv-card-label {
+    font-weight: 600;
+    color: var(--primary);
+    flex-shrink: 0;
+    min-width: 80px;
+    max-width: 120px;
+    font-size: 11px;
+  }
+  .dv-card-value {
+    color: var(--text);
+    word-break: break-word;
+    flex: 1;
+  }
+
+  @media (max-width: 768px) {
+    .dv-table-wrap { display: none; }
+    .dv-cards { display: block; }
+  }
+
   /* ═══════ RESPONSIVE ═══════ */
   @media (max-width: 768px) {
     :root { --sidebar-w: 220px; }
@@ -358,6 +496,9 @@
     <div class="nav-section">Основное</div>
     <div class="nav-item active" data-page="dashboard" onclick="goPage('dashboard')">
       <span class="icon">📊</span> Обзор
+    </div>
+    <div class="nav-item" data-page="data-viewer" onclick="goPage('data-viewer')">
+      <span class="icon">🗂️</span> Просмотр данных
     </div>
     <div class="nav-item" data-page="actions" onclick="goPage('actions')">
       <span class="icon">⚡</span> Действия
@@ -417,6 +558,44 @@
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- ═══════ PAGE: DATA VIEWER ═══════ -->
+    <div class="page" id="page-data-viewer">
+      <h1 class="page-title">🗂️ Просмотр данных</h1>
+
+      <!-- Toolbar -->
+      <div class="dv-toolbar">
+        <select class="dv-select" id="dv-sheet-select" onchange="dvLoadSheet()">
+          <option value="">— Выберите лист —</option>
+        </select>
+        <input class="dv-search" id="dv-search" type="text" placeholder="🔍 Поиск по всем колонкам..." oninput="dvSearchDebounce()">
+        <select class="dv-page-size" id="dv-page-size" onchange="dvLoadSheet()">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="200">200</option>
+          <option value="500">500</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="dvLoadSheet()">🔄</button>
+      </div>
+
+      <!-- Info -->
+      <div class="dv-info" id="dv-info"></div>
+
+      <!-- Desktop table view -->
+      <div class="dv-table-wrap" id="dv-table-wrap">
+        <div class="dv-empty" id="dv-placeholder">Выберите лист для просмотра данных</div>
+        <table class="dv-table" id="dv-table" style="display:none">
+          <thead id="dv-thead"></thead>
+          <tbody id="dv-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Mobile card view -->
+      <div class="dv-cards" id="dv-cards"></div>
+
+      <!-- Pagination -->
+      <div class="dv-pagination" id="dv-pagination" style="display:none"></div>
     </div>
 
     <!-- ═══════ PAGE: ACTIONS ═══════ -->
@@ -604,10 +783,11 @@ function goPage(name) {
   if (pageEl) pageEl.classList.add('active');
 
   // lazy load
-  if (name === 'sheets')   loadSheetsData();
-  if (name === 'tokens')   loadTokenList();
-  if (name === 'settings') loadSettingsPage();
-  if (name === 'docs')     loadDocs();
+  if (name === 'sheets')       loadSheetsData();
+  if (name === 'tokens')       loadTokenList();
+  if (name === 'settings')     loadSettingsPage();
+  if (name === 'docs')         loadDocs();
+  if (name === 'data-viewer')  dvLoadSheetNames();
 
   // close mobile menu
   document.getElementById('sidebar').classList.remove('open');
@@ -951,6 +1131,169 @@ function loadDocs() {
       el.innerHTML = '<span style="color:red">Ошибка: ' + esc(e.message) + '</span>';
     })
     .getSidebarSchemas();
+}
+
+// ═══════════════════════════════════════════════════════
+// DATA VIEWER
+// ═══════════════════════════════════════════════════════
+var dvSheetNamesLoaded = false;
+var dvSearchTimer = null;
+var dvCurrentPage = 1;
+var dvCurrentHeaders = [];
+
+function dvLoadSheetNames() {
+  if (dvSheetNamesLoaded) return;
+  google.script.run
+    .withSuccessHandler(function(names) {
+      dvSheetNamesLoaded = true;
+      var sel = document.getElementById('dv-sheet-select');
+      sel.innerHTML = '<option value="">— Выберите лист —</option>';
+      (names || []).forEach(function(n) {
+        sel.innerHTML += '<option value="' + escAttr(n) + '">' + esc(n) + '</option>';
+      });
+    })
+    .withFailureHandler(function() {})
+    .getSheetNamesForViewer();
+}
+
+function dvSearchDebounce() {
+  clearTimeout(dvSearchTimer);
+  dvSearchTimer = setTimeout(function() { dvCurrentPage = 1; dvLoadSheet(); }, 400);
+}
+
+function dvLoadSheet(page) {
+  var sheetName = document.getElementById('dv-sheet-select').value;
+  if (!sheetName) return;
+
+  var search = document.getElementById('dv-search').value;
+  var pageSize = parseInt(document.getElementById('dv-page-size').value) || 100;
+  dvCurrentPage = page || dvCurrentPage || 1;
+
+  document.getElementById('dv-placeholder').style.display = 'none';
+  document.getElementById('dv-table').style.display = 'none';
+  document.getElementById('dv-pagination').style.display = 'none';
+  document.getElementById('dv-info').innerHTML = '<span class="spinner"></span> Загрузка данных...';
+  document.getElementById('dv-cards').innerHTML = '<div class="dv-loading"><span class="spinner"></span> Загрузка...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (!result || !result.headers || !result.headers.length) {
+        document.getElementById('dv-info').textContent = 'Нет данных';
+        document.getElementById('dv-placeholder').textContent = 'Лист пуст или не найден';
+        document.getElementById('dv-placeholder').style.display = 'block';
+        document.getElementById('dv-cards').innerHTML = '<div class="dv-empty">Лист пуст или не найден</div>';
+        return;
+      }
+
+      dvCurrentHeaders = result.headers;
+      dvCurrentPage = result.page;
+
+      // Info
+      var fromRow = (result.page - 1) * result.pageSize + 1;
+      var toRow = Math.min(fromRow + result.rows.length - 1, result.total);
+      document.getElementById('dv-info').textContent =
+        'Показано ' + fromRow + '–' + toRow + ' из ' + result.total + ' строк | Стр. ' + result.page + '/' + result.totalPages;
+
+      // Desktop table
+      dvRenderTable(result.headers, result.rows);
+
+      // Mobile cards
+      dvRenderCards(result.headers, result.rows);
+
+      // Pagination
+      dvRenderPagination(result.page, result.totalPages);
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('dv-info').innerHTML = '<span style="color:red">Ошибка: ' + esc(err.message) + '</span>';
+      document.getElementById('dv-cards').innerHTML = '<div class="dv-empty" style="color:red">Ошибка загрузки</div>';
+    })
+    .getSheetDataForViewer(sheetName, dvCurrentPage, pageSize, search);
+}
+
+function dvRenderTable(headers, rows) {
+  var thead = document.getElementById('dv-thead');
+  var tbody = document.getElementById('dv-tbody');
+  var table = document.getElementById('dv-table');
+
+  // Header — add row number column
+  var th = '<tr><th style="width:40px;text-align:center">#</th>';
+  headers.forEach(function(h) { th += '<th>' + esc(h) + '</th>'; });
+  th += '</tr>';
+  thead.innerHTML = th;
+
+  // Rows
+  var pageSize = parseInt(document.getElementById('dv-page-size').value) || 100;
+  var startNum = (dvCurrentPage - 1) * pageSize + 1;
+  var html = '';
+  rows.forEach(function(row, idx) {
+    html += '<tr><td style="text-align:center;color:#888;font-size:11px">' + (startNum + idx) + '</td>';
+    row.forEach(function(cell) {
+      html += '<td title="' + escAttr(cell) + '">' + esc(cell) + '</td>';
+    });
+    html += '</tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="' + (headers.length + 1) + '" class="dv-empty">Нет результатов</td></tr>';
+  table.style.display = rows.length ? 'table' : 'none';
+  if (!rows.length) {
+    document.getElementById('dv-placeholder').textContent = 'Нет результатов по запросу';
+    document.getElementById('dv-placeholder').style.display = 'block';
+  }
+}
+
+function dvRenderCards(headers, rows) {
+  var container = document.getElementById('dv-cards');
+  if (!rows.length) {
+    container.innerHTML = '<div class="dv-empty">Нет результатов</div>';
+    return;
+  }
+
+  var pageSize = parseInt(document.getElementById('dv-page-size').value) || 100;
+  var startNum = (dvCurrentPage - 1) * pageSize + 1;
+  var html = '';
+  rows.forEach(function(row, idx) {
+    html += '<div class="dv-card">';
+    html += '<div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:600">#' + (startNum + idx) + '</div>';
+    headers.forEach(function(h, hi) {
+      var val = row[hi] || '';
+      if (!val) return; // Skip empty values on mobile for compactness
+      html += '<div class="dv-card-row">'
+        + '<span class="dv-card-label">' + esc(h) + '</span>'
+        + '<span class="dv-card-value">' + esc(val) + '</span>'
+        + '</div>';
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function dvRenderPagination(current, total) {
+  var el = document.getElementById('dv-pagination');
+  if (total <= 1) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+
+  var html = '';
+  html += '<button class="dv-page-btn" onclick="dvLoadSheet(1)"' + (current <= 1 ? ' disabled' : '') + '>«</button>';
+  html += '<button class="dv-page-btn" onclick="dvLoadSheet(' + (current - 1) + ')"' + (current <= 1 ? ' disabled' : '') + '>‹</button>';
+
+  // Show page numbers with ellipsis
+  var pages = [];
+  var start = Math.max(1, current - 2);
+  var end = Math.min(total, current + 2);
+  if (start > 1) { pages.push(1); if (start > 2) pages.push('...'); }
+  for (var i = start; i <= end; i++) pages.push(i);
+  if (end < total) { if (end < total - 1) pages.push('...'); pages.push(total); }
+
+  pages.forEach(function(p) {
+    if (p === '...') {
+      html += '<span class="dv-page-info">…</span>';
+    } else {
+      html += '<button class="dv-page-btn' + (p === current ? ' active' : '') + '" onclick="dvLoadSheet(' + p + ')">' + p + '</button>';
+    }
+  });
+
+  html += '<button class="dv-page-btn" onclick="dvLoadSheet(' + (current + 1) + ')"' + (current >= total ? ' disabled' : '') + '>›</button>';
+  html += '<button class="dv-page-btn" onclick="dvLoadSheet(' + total + ')"' + (current >= total ? ' disabled' : '') + '>»</button>';
+  el.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════

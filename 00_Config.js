@@ -190,7 +190,7 @@ const SHEET_SCHEMAS = {
   // АРТИКУЛЫ_ВБ — карточки товаров из Content API
   // ----------------------------------------------------------
   [APP.sheets.ARTICLES]: {
-    keys:   ['cabinet', 'nmID', 'vendorCode', 'brand', 'title', 'category', 'subjectName', 'photoUrl', 'updatedAt'],
+    keys:   ['cabinet', 'nmID', 'vendorCode', 'brand', 'title', 'category', 'subjectName', 'cardUrl', 'photoUrl', 'updatedAt'],
     titles: {
       cabinet:     'Кабинет',
       nmID:        'Артикул WB (nmID)',
@@ -199,6 +199,7 @@ const SHEET_SCHEMAS = {
       title:       'Название',
       category:    'Категория',
       subjectName: 'Предмет',
+      cardUrl:     'Ссылка на карточку',
       photoUrl:    'Фото (ссылка)',
       updatedAt:   'Обновлён'
     },
@@ -210,6 +211,7 @@ const SHEET_SCHEMAS = {
       title:       'Название карточки',
       category:    'Родительская категория',
       subjectName: 'Предмет (подкатегория)',
+      cardUrl:     'Прямая ссылка на карточку товара на WB',
       photoUrl:    'Ссылка на главное фото товара (big)',
       updatedAt:   'Дата последнего обновления карточки'
     }
@@ -250,17 +252,18 @@ const SHEET_SCHEMAS = {
     keys: [
       'cabinet','supplyID','preorderID',
       'createDate','supplyDate','factDate','updatedDate',
-      'statusID','boxTypeID','isBoxOnPallet'
+      'status','boxType','isBoxOnPallet'
     ],
     titles: {
       cabinet:'Кабинет', supplyID:'ID поставки', preorderID:'ID предзаказа',
       createDate:'Дата создания', supplyDate:'Плановая дата',
       factDate:'Фактическая дата', updatedDate:'Обновлена',
-      statusID:'Статус ID', boxTypeID:'Тип упаковки ID', isBoxOnPallet:'На паллете'
+      status:'Статус', boxType:'Тип упаковки', isBoxOnPallet:'На паллете'
     },
     desc: {
       supplyID:'Уникальный ID поставки FBW',
-      statusID:'1=Черновик, 2=Подтверждена, 3=Принята, 4=Завершена, 5=Отменена',
+      status:'Не запланирована / Запланирована / Разрешена выгрузка / Приёмка / Принята / Выгружена',
+      boxType:'Короб / Монопалета / Суперсейф / КГТ / Палета',
       factDate:'Фактическая дата приёмки на складе WB'
     }
   },

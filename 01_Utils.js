@@ -352,6 +352,14 @@ function writeObjectsToSheet(sheetName, objects, headersOverride) {
   });
 
   sheet.getRange(1, 1, values.length, numCols).setValues(values);
+
+  // Закрепить и оформить заголовки
+  var headerRange = sheet.getRange(1, 1, 1, numCols);
+  headerRange.setFontWeight('bold')
+    .setBackground('#1a1a2e')
+    .setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
+
   return objects.length;
 }
 
@@ -373,6 +381,11 @@ function appendObjectsToSheet(sheetName, objects) {
   // Если лист пустой — пишем заголовок
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, numCols).setValues([headers]);
+    sheet.getRange(1, 1, 1, numCols)
+      .setFontWeight('bold')
+      .setBackground('#1a1a2e')
+      .setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
   }
 
   const values = objects.map(obj => keys.map(k => _cellValue(obj[k])));

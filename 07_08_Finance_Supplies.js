@@ -14,6 +14,25 @@
 // ПОСТАВКИ FBW — Supplies API
 // ============================================================
 
+/** Словарь статусов поставки (API возвращает statusID 1-6) */
+const SUPPLY_STATUS_MAP = {
+  1: 'Не запланирована',
+  2: 'Запланирована',
+  3: 'Разрешена выгрузка',
+  4: 'Приёмка',
+  5: 'Принята',
+  6: 'Выгружена'
+};
+
+/** Словарь типов упаковки (boxTypeID) */
+const SUPPLY_BOX_TYPE_MAP = {
+  1: 'Короб',
+  2: 'Монопалета',
+  3: 'Суперсейф',
+  4: 'КГТ',
+  5: 'Палета'
+};
+
 /**
  * Загружает список поставок FBW.
  * Записывает в лист Поставки_ВБ.
@@ -58,6 +77,8 @@ function loadSupplies() {
       if (!supplies.length) { hasMore = false; break; }
 
       supplies.forEach(s => {
+        const rawStatus  = pickNumber(s, ['statusID', 'statusId']);
+        const rawBoxType = pickNumber(s, ['boxTypeID', 'boxTypeId']);
         rows.push({
           cabinet:       item.cabinet,
           supplyID:      pickString(s, ['supplyID', 'supplyId', 'ID', 'id']),
@@ -66,8 +87,8 @@ function loadSupplies() {
           supplyDate:    formatDateRu(s.supplyDate),
           factDate:      formatDateRu(s.factDate),
           updatedDate:   formatDateRu(s.updatedDate),
-          statusID:      pickNumber(s, ['statusID', 'statusId']),
-          boxTypeID:     pickNumber(s, ['boxTypeID', 'boxTypeId']),
+          status:        SUPPLY_STATUS_MAP[rawStatus]  || ('❓ ' + rawStatus),
+          boxType:       SUPPLY_BOX_TYPE_MAP[rawBoxType] || ('❓ ' + rawBoxType),
           isBoxOnPallet: s.isBoxOnPallet ? 'Да' : 'Нет'
         });
       });
